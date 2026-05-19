@@ -62,6 +62,10 @@ app.post('/api/rides/request', (req, res) => {
     return res.status(400).json({ message: 'Faltan campos obligatorios' });
   }
 
+  if (Number(seatsNeeded) < 1 || Number(seatsNeeded) > 4) {
+    return res.status(400).json({ message: 'Lugares a buscar debe ser entre 1 y 4' });
+  }
+
   const requester = users.find((u) => u.id === requesterId);
   const newRide = {
     id: `r${rides.length + 1}`,
@@ -83,16 +87,17 @@ app.post('/api/rides/request', (req, res) => {
 
 app.post('/api/rides/:rideId/offer', (req, res) => {
   const { rideId } = req.params;
-  const { userId } = req.body;
+  const { userId, seats = 1, comment = '' } = req.body;
 
   const ride = rides.find((r) => r.id === rideId);
   if (!ride) return res.status(404).json({ message: 'Viaje no encontrado' });
-  if (ride.seatsAvailable < 1) return res.status(400).json({ message: 'No hay lugares disponibles' });
+  if (seats < 1 || seats > 4) return res.status(400).json({ message: 'Podés ofrecer entre 1 y 4 lugares' });
+  if (ride.seatsAvailable < seats) return res.status(400).json({ message: 'No hay lugares suficientes disponibles' });
 
   const exists = reservations.find((r) => r.rideId === rideId && r.passengerId === userId && r.status === 'active');
   if (exists) return res.status(400).json({ message: 'Ya tenés una reserva activa en este viaje' });
 
-  ride.seatsAvailable -= 1;
+  ride.seatsAvailable -= seats;
   const reservation = {
     id: `res${reservations.length + 1}`,
     rideId,
@@ -102,7 +107,8 @@ app.post('/api/rides/:rideId/offer', (req, res) => {
     destination: ride.destination,
     date: ride.date,
     departureTime: ride.departureTime,
-    seatsReserved: 1,
+    seatsReserved: seats,
+    driverComment: comment,
     status: 'active'
   };
   reservations.unshift(reservation);
