@@ -19,3 +19,7 @@ label{display:block;font-size:10px;letter-spacing:1px;margin:10px 0 6px;font-wei
 .badge{font-size:10px;background:#4b7f00;color:#fff;border-radius:10px;padding:3px 8px}.row{display:flex;gap:8px}.row .btn{flex:1}.subh{font-size:11px;color:#4f6e3b}
 .fab{width:100%;margin-top:8px}.error{color:#ba2a2a}.ok{color:#336f12}
 .bottom-nav-wrap{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center}.bottom-nav{max-width:390px;width:100%;background:#f6f6f6;border-top:1px solid #ddd;padding:10px 0;display:flex;justify-content:space-around;font-size:10px;color:#8d97a5}.bottom-nav .active{color:#2f6fb9;font-weight:700}
+
+.brand{text-decoration:none}
+.bottom-nav a{text-decoration:none;color:#8d97a5}.bottom-nav a.active{color:#2f6fb9;font-weight:700}
+.offer-form{display:grid;gap:8px}.mine-msg{font-size:12px;color:#a33;align-self:center}

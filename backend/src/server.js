@@ -87,17 +87,17 @@ app.post('/api/rides/request', (req, res) => {
 
 app.post('/api/rides/:rideId/offer', (req, res) => {
   const { rideId } = req.params;
-  const { userId, seats = 1, comment = '' } = req.body;
+  const { userId, comment = '' } = req.body;
 
   const ride = rides.find((r) => r.id === rideId);
   if (!ride) return res.status(404).json({ message: 'Viaje no encontrado' });
-  if (seats < 1 || seats > 4) return res.status(400).json({ message: 'Podés ofrecer entre 1 y 4 lugares' });
-  if (ride.seatsAvailable < seats) return res.status(400).json({ message: 'No hay lugares suficientes disponibles' });
+  if (ride.driverId === userId) return res.status(400).json({ message: 'Esta solicitud es tuya, no puedes aceptarla' });
+  if (ride.seatsAvailable < 1) return res.status(400).json({ message: 'No hay lugares suficientes disponibles' });
 
   const exists = reservations.find((r) => r.rideId === rideId && r.passengerId === userId && r.status === 'active');
   if (exists) return res.status(400).json({ message: 'Ya tenés una reserva activa en este viaje' });
 
-  ride.seatsAvailable -= seats;
+  ride.seatsAvailable -= 1;
   const reservation = {
     id: `res${reservations.length + 1}`,
     rideId,
@@ -107,7 +107,7 @@ app.post('/api/rides/:rideId/offer', (req, res) => {
     destination: ride.destination,
     date: ride.date,
     departureTime: ride.departureTime,
-    seatsReserved: seats,
+    seatsReserved: 1,
     driverComment: comment,
     status: 'active'
   };
@@ -130,6 +130,16 @@ app.post('/api/reservations/:reservationId/cancel', (req, res) => {
   const ride = rides.find((r) => r.id === reservation.rideId);
   if (ride) ride.seatsAvailable += reservation.seatsReserved;
 
+  res.json({ ok: true });
+});
+
+
+app.post('/api/rides/:rideId/cancel', (req, res) => {
+  const { rideId } = req.params;
+  const { userId } = req.body;
+  const idx = rides.findIndex((r) => r.id === rideId && r.driverId === userId && r.requested === true && r.status === 'open');
+  if (idx === -1) return res.status(404).json({ message: 'Solicitud no encontrada' });
+  rides[idx].status = 'cancelled';
   res.json({ ok: true });
 });
 
