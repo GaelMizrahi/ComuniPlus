@@ -1,146 +1,322 @@
 import express from 'express';
 import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const users = [
-  { id: 'u1', email: 'andres@comuni.plus', password: '123456', fullName: 'Andres Perel', community: 'Club Náutico Hacoaj' },
-  { id: 'u2', email: 'mili@comuni.plus', password: '123456', fullName: 'Milagros Cohen', community: 'Club Náutico Hacoaj' },
-  { id: 'u3', email: 'tomas@comuni.plus', password: '123456', fullName: 'Tomás Dayan', community: 'Club Náutico Hacoaj' }
-];
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const rides = [
-  {
-    id: 'r1',
-    driverId: 'u2',
-    driverName: 'Milagros Cohen',
-    origin: 'Belgrano',
-    destination: 'Club Náutico Hacoaj',
-    date: '2026-05-20',
-    departureTime: '18:00',
-    seatsAvailable: 2,
-    comment: 'Puedo esperar 10 minutos',
-    status: 'open'
-  }
-];
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.warn('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars.');
+}
 
-const reservations = [];
+const supabase = createClient(supabaseUrl ?? '', supabaseServiceKey ?? '');
+
+async function getComunidadUsuarioIdByUsuarioId(usuarioId) {
+  const { data, error } = await supabase
+    .from('ComunidadUsuario')
+    .select('id')
+    .eq('idUsuario', usuarioId)
+    .eq('aceptado', true)
+    .limit(1)
+    .single();
+
+  if (error) throw error;
+  return data.id;
+}
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'comuniplus-backend' });
+  res.json({ ok: true, service: 'comuniplus-backend', db: !!supabaseUrl });
 });
 
-app.post('/api/login', (req, res) => {
-  const { email, password } = req.body;
-  const user = users.find((u) => u.email === email && u.password === password);
-  if (!user) return res.status(401).json({ message: 'Credenciales inválidas' });
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  return res.json({
-    user: {
-      id: user.id,
-      fullName: user.fullName,
-      email: user.email,
-      community: user.community
+    const { data: user, error: userError } = await supabase
+      .from('Usuario')
+      .select('id, nombre, apellido, mail, contraseña')
+      .eq('mail', email)
+      .eq('contraseña', password)
+      .limit(1)
+      .single();
+
+    if (userError || !user) return res.status(401).json({ message: 'Credenciales inválidas' });
+
+    const { data: membership, error: membershipError } = await supabase
+      .from('ComunidadUsuario')
+      .select('id, idComunidad, nroSocio, aceptado')
+      .eq('idUsuario', user.id)
+      .eq('aceptado', true)
+      .limit(1)
+      .single();
+
+    if (membershipError || !membership) return res.status(403).json({ message: 'Usuario sin comunidad aceptada' });
+
+    const { data: comunidad, error: comunidadError } = await supabase
+      .from('Comunidad')
+      .select('id, nombre')
+      .eq('id', membership.idComunidad)
+      .single();
+
+    if (comunidadError || !comunidad) return res.status(404).json({ message: 'Comunidad no encontrada' });
+
+    return res.json({
+      user: {
+        id: user.id,
+        comunidadUsuarioId: membership.id,
+        fullName: `${user.nombre}${user.apellido ? ` ${user.apellido}` : ''}`,
+        email: user.mail,
+        community: comunidad.nombre,
+        nroSocio: membership.nroSocio
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error en login', detail: error.message });
+  }
+});
+
+app.get('/api/rides', async (req, res) => {
+  try {
+    const { zone } = req.query;
+
+    let query = supabase
+      .from('solicitudViaje')
+      .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante')
+      .order('id', { ascending: false });
+
+    if (zone && zone !== 'Todos los viajes') query = query.or(`lugarDeSalida.ilike.%${zone}%,lugarDeLlegada.ilike.%${zone}%`);
+
+    const { data: requests, error } = await query;
+    if (error) throw error;
+
+    const requestIds = requests.map((r) => r.id);
+    let acceptedIds = new Set();
+    if (requestIds.length > 0) {
+      const { data: trips, error: tripsError } = await supabase
+        .from('Viaje')
+        .select('idSolicitudViaje')
+        .in('idSolicitudViaje', requestIds);
+      if (tripsError) throw tripsError;
+      acceptedIds = new Set(trips.map((t) => t.idSolicitudViaje));
     }
-  });
-});
 
-app.get('/api/rides', (req, res) => {
-  const { zone } = req.query;
-  const openRides = rides.filter((r) => r.status === 'open' && r.seatsAvailable > 0);
-  const filtered = zone && zone !== 'Todos los viajes'
-    ? openRides.filter((r) => r.origin.includes(zone) || r.destination.includes(zone))
-    : openRides;
-  res.json(filtered);
-});
+    const solicitanteIds = [...new Set(requests.map((r) => r.idSolicitante).filter(Boolean))];
+    let memberById = {};
+    if (solicitanteIds.length > 0) {
+      const { data: members, error: membersError } = await supabase
+        .from('ComunidadUsuario')
+        .select('id, idUsuario')
+        .in('id', solicitanteIds);
+      if (membersError) throw membersError;
 
-app.post('/api/rides/request', (req, res) => {
-  const { requesterId, origin, destination, date, departureTime, seatsNeeded, comment } = req.body;
-  if (!requesterId || !origin || !destination || !date || !departureTime || !seatsNeeded) {
-    return res.status(400).json({ message: 'Faltan campos obligatorios' });
+      const usuarioIds = [...new Set(members.map((m) => m.idUsuario).filter(Boolean))];
+      const { data: users, error: usersError } = await supabase
+        .from('Usuario')
+        .select('id, nombre, apellido')
+        .in('id', usuarioIds);
+      if (usersError) throw usersError;
+
+      const userById = Object.fromEntries(users.map((u) => [u.id, u]));
+      memberById = Object.fromEntries(
+        members.map((m) => [m.id, userById[m.idUsuario]]).filter(([, u]) => !!u)
+      );
+    }
+
+    const payload = requests.map((r) => {
+      const u = memberById[r.idSolicitante];
+      return {
+        id: r.id,
+        driverId: r.idSolicitante,
+        driverName: u ? `${u.nombre}${u.apellido ? ` ${u.apellido}` : ''}` : 'Usuario',
+        origin: r.lugarDeSalida,
+        destination: r.lugarDeLlegada,
+        departureTime: r.horarioDeSalida,
+        seatsAvailable: Number(r.espaciosSolicitados),
+        comment: '',
+        requested: true,
+        accepted: acceptedIds.has(r.id)
+      };
+    }).filter((r) => !r.accepted);
+
+    return res.json(payload);
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al listar viajes', detail: error.message });
   }
+});
 
-  if (Number(seatsNeeded) < 1 || Number(seatsNeeded) > 4) {
-    return res.status(400).json({ message: 'Lugares a buscar debe ser entre 1 y 4' });
+app.post('/api/rides/request', async (req, res) => {
+  try {
+    const { requesterId, origin, destination, departureTime, seatsNeeded } = req.body;
+    if (!requesterId || !origin || !destination || !departureTime || !seatsNeeded) {
+      return res.status(400).json({ message: 'Faltan campos obligatorios' });
+    }
+    if (Number(seatsNeeded) < 1 || Number(seatsNeeded) > 4) {
+      return res.status(400).json({ message: 'Lugares a buscar debe ser entre 1 y 4' });
+    }
+
+    const comunidadUsuarioId = await getComunidadUsuarioIdByUsuarioId(requesterId);
+
+    const { data, error } = await supabase
+      .from('solicitudViaje')
+      .insert({
+        espaciosSolicitados: Number(seatsNeeded),
+        horarioDeSalida: departureTime,
+        lugarDeSalida: origin,
+        lugarDeLlegada: destination,
+        idSolicitante: comunidadUsuarioId
+      })
+      .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante')
+      .single();
+
+    if (error) throw error;
+
+    return res.status(201).json({
+      id: data.id,
+      driverId: data.idSolicitante,
+      origin: data.lugarDeSalida,
+      destination: data.lugarDeLlegada,
+      departureTime: data.horarioDeSalida,
+      seatsAvailable: data.espaciosSolicitados,
+      requested: true
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al pedir viaje', detail: error.message });
   }
-
-  const requester = users.find((u) => u.id === requesterId);
-  const newRide = {
-    id: `r${rides.length + 1}`,
-    driverId: requesterId,
-    driverName: requester?.fullName || 'Usuario',
-    origin,
-    destination,
-    date,
-    departureTime,
-    seatsAvailable: Number(seatsNeeded),
-    comment: comment || '',
-    status: 'open',
-    requested: true
-  };
-
-  rides.unshift(newRide);
-  res.status(201).json(newRide);
 });
 
-app.post('/api/rides/:rideId/offer', (req, res) => {
-  const { rideId } = req.params;
-  const { userId, comment = '' } = req.body;
+app.post('/api/rides/:rideId/offer', async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { userId, comment = '' } = req.body;
 
-  const ride = rides.find((r) => r.id === rideId);
-  if (!ride) return res.status(404).json({ message: 'Viaje no encontrado' });
-  if (ride.driverId === userId) return res.status(400).json({ message: 'Esta solicitud es tuya, no puedes aceptarla' });
-  if (ride.seatsAvailable < 1) return res.status(400).json({ message: 'No hay lugares suficientes disponibles' });
+    const conductorComunidadUsuarioId = await getComunidadUsuarioIdByUsuarioId(userId);
 
-  const exists = reservations.find((r) => r.rideId === rideId && r.passengerId === userId && r.status === 'active');
-  if (exists) return res.status(400).json({ message: 'Ya tenés una reserva activa en este viaje' });
+    const { data: request, error: requestError } = await supabase
+      .from('solicitudViaje')
+      .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante')
+      .eq('id', rideId)
+      .single();
+    if (requestError || !request) return res.status(404).json({ message: 'Viaje no encontrado' });
 
-  ride.seatsAvailable -= 1;
-  const reservation = {
-    id: `res${reservations.length + 1}`,
-    rideId,
-    passengerId: userId,
-    driverName: ride.driverName,
-    origin: ride.origin,
-    destination: ride.destination,
-    date: ride.date,
-    departureTime: ride.departureTime,
-    seatsReserved: 1,
-    driverComment: comment,
-    status: 'active'
-  };
-  reservations.unshift(reservation);
-  res.status(201).json(reservation);
+    if (request.idSolicitante === conductorComunidadUsuarioId) {
+      return res.status(400).json({ message: 'Esta solicitud es tuya, no puedes aceptarla' });
+    }
+
+    const { data: existingTrip } = await supabase
+      .from('Viaje')
+      .select('id')
+      .eq('idSolicitudViaje', request.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingTrip) return res.status(400).json({ message: 'Esta solicitud ya fue tomada' });
+
+    const { data: trip, error: tripError } = await supabase
+      .from('Viaje')
+      .insert({
+        lugaresDisponibles: Math.max(0, Number(request.espaciosSolicitados) - 1),
+        horarioDeSalida: request.horarioDeSalida,
+        descripcionAuto: comment,
+        lugarDeSalida: request.lugarDeSalida,
+        lugarDeLlegada: request.lugarDeLlegada,
+        idConductor: conductorComunidadUsuarioId,
+        idSolicitudViaje: request.id
+      })
+      .select('id')
+      .single();
+    if (tripError) throw tripError;
+
+    return res.status(201).json({
+      id: `res-${trip.id}`,
+      rideId: request.id,
+      passengerId: request.idSolicitante,
+      origin: request.lugarDeSalida,
+      destination: request.lugarDeLlegada,
+      departureTime: request.horarioDeSalida,
+      seatsReserved: 1,
+      driverComment: comment,
+      status: 'active'
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al ofrecer viaje', detail: error.message });
+  }
 });
 
-app.get('/api/reservations', (req, res) => {
-  const { userId } = req.query;
-  const list = reservations.filter((r) => r.passengerId === userId && r.status === 'active');
-  res.json(list);
+app.get('/api/reservations', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const comunidadUsuarioId = await getComunidadUsuarioIdByUsuarioId(Number(userId));
+
+    const { data: solicitudes, error: solError } = await supabase
+      .from('solicitudViaje')
+      .select('id, lugarDeSalida, lugarDeLlegada, horarioDeSalida, idSolicitante')
+      .eq('idSolicitante', comunidadUsuarioId);
+    if (solError) throw solError;
+
+    const solIds = solicitudes.map((s) => s.id);
+    if (solIds.length === 0) return res.json([]);
+
+    const { data: viajes, error: viajeError } = await supabase
+      .from('Viaje')
+      .select('id, idSolicitudViaje, descripcionAuto')
+      .in('idSolicitudViaje', solIds);
+    if (viajeError) throw viajeError;
+
+    const bySol = Object.fromEntries(solicitudes.map((s) => [s.id, s]));
+
+    return res.json(
+      viajes.map((v) => ({
+        id: `res-${v.id}`,
+        rideId: v.idSolicitudViaje,
+        origin: bySol[v.idSolicitudViaje]?.lugarDeSalida,
+        destination: bySol[v.idSolicitudViaje]?.lugarDeLlegada,
+        departureTime: bySol[v.idSolicitudViaje]?.horarioDeSalida,
+        seatsReserved: 1,
+        driverComment: v.descripcionAuto,
+        status: 'active'
+      }))
+    );
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al listar reservas', detail: error.message });
+  }
 });
 
-app.post('/api/reservations/:reservationId/cancel', (req, res) => {
-  const { reservationId } = req.params;
-  const reservation = reservations.find((r) => r.id === reservationId && r.status === 'active');
-  if (!reservation) return res.status(404).json({ message: 'Reserva no encontrada' });
+app.post('/api/reservations/:reservationId/cancel', async (req, res) => {
+  try {
+    const { reservationId } = req.params;
+    const tripId = String(reservationId).replace('res-', '');
 
-  reservation.status = 'cancelled';
-  const ride = rides.find((r) => r.id === reservation.rideId);
-  if (ride) ride.seatsAvailable += reservation.seatsReserved;
+    const { error } = await supabase.from('Viaje').delete().eq('id', tripId);
+    if (error) throw error;
 
-  res.json({ ok: true });
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al cancelar reserva', detail: error.message });
+  }
 });
 
+app.post('/api/rides/:rideId/cancel', async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { userId } = req.body;
+    const comunidadUsuarioId = await getComunidadUsuarioIdByUsuarioId(userId);
 
-app.post('/api/rides/:rideId/cancel', (req, res) => {
-  const { rideId } = req.params;
-  const { userId } = req.body;
-  const idx = rides.findIndex((r) => r.id === rideId && r.driverId === userId && r.requested === true && r.status === 'open');
-  if (idx === -1) return res.status(404).json({ message: 'Solicitud no encontrada' });
-  rides[idx].status = 'cancelled';
-  res.json({ ok: true });
+    await supabase.from('Viaje').delete().eq('idSolicitudViaje', rideId);
+    const { error } = await supabase
+      .from('solicitudViaje')
+      .delete()
+      .eq('id', rideId)
+      .eq('idSolicitante', comunidadUsuarioId);
+
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error al cancelar solicitud', detail: error.message });
+  }
 });
 
 app.listen(3001, () => {
