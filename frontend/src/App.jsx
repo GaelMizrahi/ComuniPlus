@@ -209,7 +209,7 @@ function Solicitar({ user, onLogout }) {
     destination: '',
     date: '',
     departureTime: '',
-    seatsNeeded: 2,
+    seatsNeeded: 1,
     contactPhone: localStorage.getItem('comuni_phone') || '',
     requirements: []
   });
