@@ -1,0 +1,4 @@
+# Variables locales y secretos del backend
+.env
+.env.*
+!.env.example
