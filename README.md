@@ -1,5 +1,7 @@
 # Comuni+ MVP
 
+<!-- Cambio mínimo para actualizar esta rama con los últimos ajustes del MVP. -->
+
 Base inicial del MVP de Comuni+ con:
 - Frontend React + JavaScript
 - Backend Node + Express
