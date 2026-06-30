@@ -38,7 +38,25 @@ export async function findAcceptedRequestIds(requestIds) {
   return new Set(trips.map((trip) => trip.idSolicitudViaje));
 }
 
-export async function createRequest({ seats, departureTime, origin, destination, requesterUserId, date }) {
+export async function createRequest({
+  seats,
+  departureTime,
+  origin,
+  destination,
+  requesterUserId,
+  date,
+  communityId
+}) {
+  console.log("===== CREATE REQUEST =====");
+  console.log({
+    seats,
+    departureTime,
+    origin,
+    destination,
+    requesterUserId,
+    date
+  });
+
   const { data, error } = await supabase
     .from('solicitudViaje')
     .insert({
@@ -47,12 +65,22 @@ export async function createRequest({ seats, departureTime, origin, destination,
       lugarDeSalida: String(origin).trim(),
       lugarDeLlegada: String(destination).trim(),
       idSolicitante: requesterUserId,
+      idComunidad: communityId,
       diaSalida: date
     })
     .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida')
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("===== SUPABASE ERROR =====");
+    console.error(error);
+    console.error(JSON.stringify(error, null, 2));
+    throw error;
+  }
+
+  console.log("===== INSERT OK =====");
+  console.log(data);
+
   return data;
 }
 

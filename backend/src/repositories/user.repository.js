@@ -2,6 +2,9 @@ import { supabase } from '../config/index.js';
 import { asNumber, mapSupabaseError } from '../utils/helpers.js';
 
 export async function getAcceptedMembershipByUserId(usuarioId) {
+  console.log("===== BUSCANDO MEMBRESÍA =====");
+  console.log("Usuario:", usuarioId);
+
   const { data, error } = await supabase
     .from('ComunidadUsuario')
     .select('id, idComunidad, idUsuario, aceptado, nroSocio')
@@ -10,8 +13,20 @@ export async function getAcceptedMembershipByUserId(usuarioId) {
     .limit(1)
     .maybeSingle();
 
-  if (error) throw error;
-  if (!data) throw new Error('Usuario sin comunidad aceptada');
+  if (error) {
+    console.error("SUPABASE ERROR:");
+    console.error(error);
+    throw error;
+  }
+
+  console.log("Membresía encontrada:", data);
+
+  if (!data) {
+    const err = new Error('Usuario sin comunidad aceptada');
+    err.statusCode = 400;
+    throw err;
+  }
+
   return data;
 }
 

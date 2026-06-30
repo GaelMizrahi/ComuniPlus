@@ -17,11 +17,16 @@ export async function requestRide(req, res) {
     const result = await rideService.requestRide(req.user.idUsuario, req.body);
     res.status(201).json(result);
   } catch (error) {
-    const status = error.statusCode || 500;
-    const message = status === 500 ? 'Error al pedir viaje' : error.message;
-    const body = status === 500 ? { message, detail: error.message } : { message };
-    res.status(status).json(body);
-  }
+  console.error("===== ERROR REQUEST RIDE =====");
+  console.error(error);
+  console.error(error.stack);
+
+  const status = error.statusCode || 500;
+
+  res.status(status).json({
+    message: error.message
+  });
+}
 }
 
 export async function offerRide(req, res) {
