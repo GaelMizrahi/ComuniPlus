@@ -1,26 +1,36 @@
 import { supabase } from '../config/index.js';
 
-const COURT_COLUMNS = 'id, numero, lugar, idComunidad, cantidadMax';
+const COURT_COLUMNS = 'id, numero, lugar, idComunidad, cantidadMax, deporte';
 const RESERVATION_COLUMNS = 'id, horario, dia, deporte, idCancha, cantidadJugadores, estado, fechaDeAlta';
 
 export async function findCourts() {
   const { data = [], error } = await supabase
     .from('Cancha')
     .select(COURT_COLUMNS)
-    .order('numero');
+    .order('numero', { ascending: true });
 
-  if (error) throw error;
+  if (error) {
+    console.error('===== SUPABASE ERROR findCourts =====');
+    console.error(error);
+    throw error;
+  }
+
   return data;
 }
 
-export async function findCourtById(id) {
+export async function findCourtById(courtId) {
   const { data, error } = await supabase
     .from('Cancha')
     .select(COURT_COLUMNS)
-    .eq('id', id)
+    .eq('id', courtId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    console.error('===== SUPABASE ERROR findCourtById =====');
+    console.error(error);
+    throw error;
+  }
+
   return data;
 }
 
@@ -29,8 +39,14 @@ export async function findReservationsByCourtAndDate(courtId, date) {
     .from('Reserva')
     .select(RESERVATION_COLUMNS)
     .eq('idCancha', courtId)
-    .eq('dia', date);
+    .eq('dia', date)
+    .neq('estado', 'cancelada');
 
-  if (error) throw error;
+  if (error) {
+    console.error('===== SUPABASE ERROR findReservationsByCourtAndDate =====');
+    console.error(error);
+    throw error;
+  }
+
   return data;
 }
