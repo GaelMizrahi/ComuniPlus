@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import SportFilter from '../../components/deportes/SportFilter.jsx';
 import CourtCard from '../../components/deportes/CourtCard.jsx';
 import Calendar from '../../components/deportes/Calendar.jsx';

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { cancelReserva, getMisReservas } from '../../services/deportesApi.js';
 
 const canCancel = (reservation) => {

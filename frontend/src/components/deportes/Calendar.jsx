@@ -1,3 +1,4 @@
+import React from 'react';
 export default function Calendar({ value, onChange }) {
   const today = new Date().toISOString().slice(0, 10);
   return (

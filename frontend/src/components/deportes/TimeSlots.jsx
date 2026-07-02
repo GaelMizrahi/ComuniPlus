@@ -1,3 +1,4 @@
+import React from 'react';
 export default function TimeSlots({ slots, selectedTime, onSelect }) {
   return (
     <div className="time-slots">

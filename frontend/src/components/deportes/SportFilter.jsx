@@ -1,3 +1,4 @@
+import React from 'react';
 export default function SportFilter({ sports, selectedSport, onSelect }) {
   return (
     <div className="chips sport-filter">

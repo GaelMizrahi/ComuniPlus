@@ -1,3 +1,4 @@
+import React from 'react';
 export default function CourtCard({ court, selected, onSelect }) {
   return (
     <article className={`court-card elevated-card ${selected ? 'selected' : ''}`} onClick={() => onSelect(court)}>

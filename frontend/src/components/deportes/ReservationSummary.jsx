@@ -1,3 +1,4 @@
+import React from 'react';
 export default function ReservationSummary({ court, date, time }) {
   if (!court || !date || !time) return null;
   const total = Number(court.pricePerHour ?? 0);

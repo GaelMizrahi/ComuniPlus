@@ -10,14 +10,26 @@ export function getSports() {
   return SPORTS;
 }
 
+const SPORTS = [
+  'Fútbol masculino',
+  'Fútbol femenino',
+  'Tenis',
+  'Básquet',
+  'Patín',
+  'Pádel',
+  'Hockey',
+  'Gimnasia Artística',
+  'Vóley'
+];
+
 export function shapeCourt(court) {
   return {
     id: court.id,
-    name: court.nombre,
-    location: court.ubicacion,
-    image: court.imagen,
-    pricePerHour: Number(court.precioPorHora ?? 0),
-    sport: court.deporte
+    name: `Cancha ${court.numero}`,
+    location: court.lugar,
+    image: null,
+    pricePerHour: 0,
+    sport: SPORTS[(court.numero - 1) % SPORTS.length]
   };
 }
 
