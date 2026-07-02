@@ -4,7 +4,7 @@ import { asNumber } from '../utils/helpers.js';
 export async function getRequestById(rideId) {
   const { data, error } = await supabase
     .from('solicitudViaje')
-    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida')
+    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida, observaciones, restricciones')
     .eq('id', rideId)
     .maybeSingle();
 
@@ -15,7 +15,7 @@ export async function getRequestById(rideId) {
 export async function findPendingRequests(zone) {
   let query = supabase
     .from('solicitudViaje')
-    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida')
+    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida, observaciones, restricciones')
     .order('id', { ascending: false });
 
   if (zone && zone !== 'Todos los viajes') {
@@ -45,7 +45,9 @@ export async function createRequest({
   destination,
   requesterUserId,
   date,
-  communityId
+  communityId,
+  observations,
+  restrictions = []
 }) {
   console.log("===== CREATE REQUEST =====");
   console.log({
@@ -54,7 +56,9 @@ export async function createRequest({
     origin,
     destination,
     requesterUserId,
-    date
+    date,
+    observations,
+    restrictions
   });
 
   const { data, error } = await supabase
@@ -66,9 +70,11 @@ export async function createRequest({
       lugarDeLlegada: String(destination).trim(),
       idSolicitante: requesterUserId,
       idComunidad: communityId,
-      diaSalida: date
+      diaSalida: date,
+      observaciones: observations || null,
+      restricciones: restrictions
     })
-    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida')
+    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida, observaciones, restricciones')
     .single();
 
   if (error) {
@@ -127,7 +133,7 @@ export async function createCommunityTrip(communityId, tripId) {
 export async function findPassengerRequests(userId) {
   const { data = [], error } = await supabase
     .from('solicitudViaje')
-    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida')
+    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida, observaciones, restricciones')
     .eq('idSolicitante', userId);
 
   if (error) throw error;
@@ -159,7 +165,7 @@ export async function findRequestsByIds(requestIds) {
   if (requestIds.length === 0) return [];
   const { data = [], error } = await supabase
     .from('solicitudViaje')
-    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida')
+    .select('id, espaciosSolicitados, horarioDeSalida, lugarDeSalida, lugarDeLlegada, idSolicitante, diaSalida, observaciones, restricciones')
     .in('id', requestIds);
 
   if (error) throw error;

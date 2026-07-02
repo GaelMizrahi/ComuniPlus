@@ -103,6 +103,9 @@ export async function cancelReservation(userId, reservationId) {
   }
 
   await deleteCommunityTripsByTripId(tripId);
-  const error = await deleteTrip(tripId);
-  if (error) throw error;
+  const deleteTripError = await deleteTrip(tripId);
+  if (deleteTripError) throw deleteTripError;
+
+  const deleteRequestError = await deleteRequest(trip.idSolicitudViaje);
+  if (deleteRequestError) throw deleteRequestError;
 }

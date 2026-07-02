@@ -16,6 +16,25 @@ export function buildWhatsAppLink(phone, message) {
   return `https://wa.me/${normalized.replace(/^\+/, '')}?text=${encodeURIComponent(message)}`;
 }
 
+export function normalizeRestrictions(restrictions) {
+  return Array.isArray(restrictions)
+    ? restrictions.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+}
+
+export function generateWhatsappLink(phoneNumber, reservation, currentUser) {
+  const cleanPhoneNumber = String(phoneNumber ?? '').replace(/\D/g, '');
+  if (!cleanPhoneNumber) return null;
+
+  const restrictions = normalizeRestrictions(reservation?.restrictions).length
+    ? normalizeRestrictions(reservation.restrictions).join(', ')
+    : 'sin restricciones especiales';
+  const travelerName = currentUser ? getFullName(currentUser) : 'un usuario de la app';
+  const message = `Hola, ¿cómo estás? Soy ${travelerName}. Sé que pediste un viaje desde ${reservation.origin} hasta ${reservation.destination} para el ${reservation.departureDate ?? 'día acordado'} a las ${reservation.departureTime ?? 'hora acordada'} con estas restricciones: ${restrictions}. Nos comunicamos por acá. Si te queda alguna duda, avisame.`;
+
+  return `https://wa.me/${cleanPhoneNumber}?text=${encodeURIComponent(message)}`;
+}
+
 export function mapSupabaseError(error) {
   if (!error) return null;
   return { message: error.message, code: error.code, details: error.details, hint: error.hint };
@@ -33,6 +52,8 @@ export function shapeOpenRide(request, requester) {
     departureTime: request.horarioDeSalida,
     seatsNeeded: Number(request.espaciosSolicitados),
     seatsAvailable: Number(request.espaciosSolicitados),
+    observations: request.observaciones ?? '',
+    restrictions: normalizeRestrictions(request.restricciones),
     requested: true
   };
 }
@@ -48,7 +69,13 @@ export function shapeReservation({ trip, request, currentUserId, requester, cond
   const isPassenger = Number(request.idSolicitante) === Number(currentUserId);
   const otherPerson = isPassenger ? conductor : requester;
   const role = isPassenger ? 'passenger' : 'driver';
-  const message = `Hola ${getFullName(otherPerson)}, soy ${isPassenger ? 'la persona que pidió' : 'la persona que aceptó'} la reserva del viaje de ${request.lugarDeSalida} a ${request.lugarDeLlegada}. Me quedó una duda y quería consultarte:`;
+  const reservationData = {
+    origin: request.lugarDeSalida,
+    destination: request.lugarDeLlegada,
+    departureDate: request.diaSalida,
+    departureTime: request.horarioDeSalida,
+    restrictions: normalizeRestrictions(request.restricciones)
+  };
 
   return {
     id: `trip-${trip.id}`,
@@ -58,7 +85,7 @@ export function shapeReservation({ trip, request, currentUserId, requester, cond
     roleLabel: isPassenger ? 'Viaje que pediste' : 'Viaje que aceptaste',
     otherPersonName: getFullName(otherPerson),
     otherContactPhone: otherPerson?.telefono ?? null,
-    whatsappLink: buildWhatsAppLink(otherPerson?.telefono, message),
+    whatsappLink: generateWhatsappLink(otherPerson?.telefono, reservationData, isPassenger ? requester : conductor),
     requesterName: getFullName(requester),
     conductorName: getFullName(conductor),
     origin: request.lugarDeSalida,
@@ -66,6 +93,8 @@ export function shapeReservation({ trip, request, currentUserId, requester, cond
     departureDate: request.diaSalida,
     departureTime: request.horarioDeSalida,
     seatsReserved: Number(request.espaciosSolicitados),
+    observations: request.observaciones ?? '',
+    restrictions: reservationData.restrictions,
     status: 'active',
     canComplete: isRideDue(request.diaSalida, request.horarioDeSalida),
     carDescription: trip.descripcionAuto ?? '',

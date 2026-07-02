@@ -8,6 +8,21 @@ const jsonHeaders = (token) => ({ 'Content-Type': 'application/json', ...authHea
 
 const formatDate = (date) => date ? new Date(`${date}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }) : 'Sin fecha';
 const formatTime = (time) => time ? String(time).slice(0, 5) : '--:--';
+const TRAVEL_REQUIREMENTS = [
+  'Silla de ruedas',
+  'Valija',
+  'Mochila',
+  'Viaja con acompañante',
+  'Necesita ayuda para subir o bajar',
+  'Mascota',
+  'Otro requisito importante'
+];
+
+const RequirementList = ({ items }) => {
+  const requirements = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!requirements.length) return <p className="muted small">Sin requisitos especiales.</p>;
+  return <div className="req-list">{requirements.map((item) => <span key={item}>{item}</span>)}</div>;
+};
 
 const TopBar = ({ user }) => (
   <header className="topbar">
@@ -171,6 +186,8 @@ function Viajes({ user, token, onLogout }) {
             </div>
             <p className="seats">🟢 {ride.seatsAvailable} lugar{ride.seatsAvailable === 1 ? '' : 'es'} solicitado{ride.seatsAvailable === 1 ? '' : 's'}</p>
             <div className="route-box"><span>{ride.origin}</span><b>→</b><span>{ride.destination}</span></div>
+            <p className="muted small"><b>Observaciones:</b> {ride.observations || 'Sin observaciones.'}</p>
+            <RequirementList items={ride.restrictions} />
             {isMine ? (
               <div className="action-strip mine">
                 <span>Esta solicitud es tuya</span>
@@ -198,10 +215,20 @@ function Solicitar({ user, token, onLogout }) {
     destination: '',
     date: '',
     departureTime: '',
-    seatsNeeded: 2
+    seatsNeeded: 2,
+    observations: '',
+    restrictions: []
   });
 
   const change = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const toggleRequirement = (requirement) => {
+    setForm((prev) => ({
+      ...prev,
+      restrictions: prev.restrictions.includes(requirement)
+        ? prev.restrictions.filter((item) => item !== requirement)
+        : [...prev.restrictions, requirement]
+    }));
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -234,6 +261,21 @@ function Solicitar({ user, token, onLogout }) {
           </div>
           <label>LUGARES A BUSCAR</label>
           <div className="counter"><button type="button" onClick={() => change('seatsNeeded', Math.max(1, form.seatsNeeded - 1))}>−</button><b>{form.seatsNeeded}</b><button type="button" onClick={() => change('seatsNeeded', Math.min(4, form.seatsNeeded + 1))}>+</button></div>
+          <label>REQUISITOS DEL VIAJE</label>
+          <div className="checks">
+            {TRAVEL_REQUIREMENTS.map((requirement) => (
+              <button
+                key={requirement}
+                type="button"
+                className={form.restrictions.includes(requirement) ? 'checked' : ''}
+                onClick={() => toggleRequirement(requirement)}
+              >
+                {form.restrictions.includes(requirement) ? '✓ ' : '+ '} {requirement}
+              </button>
+            ))}
+          </div>
+          <label>OBSERVACIONES</label>
+          <textarea className="field" rows="3" value={form.observations} onChange={(e) => change('observations', e.target.value)} placeholder="Ej: punto de encuentro, indicaciones o detalles importantes" />
           <button className="btn green full">⊕ Publicar viaje</button>
         </form>
       </section>
@@ -283,7 +325,9 @@ function Reservas({ user, token, onLogout }) {
             <div className="date-pill"><b>{formatDate(item.departureDate)}</b><span>{formatTime(item.departureTime)}</span></div>
           </div>
           <div className="route-box"><span>{item.origin}</span><b>→</b><span>{item.destination}</span></div>
-          <p><b>Lugares:</b> {item.seatsReserved}</p>
+          <p><b>Lugares/personas:</b> {item.seatsReserved}</p>
+          <p className="muted small"><b>Observaciones:</b> {item.observations || 'Sin observaciones.'}</p>
+          <RequirementList items={item.restrictions} />
           <div className="contact-box">
             <span>WhatsApp de {item.otherPersonName}</span>
             <b>{item.otherContactPhone || 'No disponible'}</b>

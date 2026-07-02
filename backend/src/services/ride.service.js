@@ -1,4 +1,4 @@
-  import { asNumber, shapeOpenRide } from '../utils/helpers.js';
+  import { asNumber, normalizeRestrictions, shapeOpenRide } from '../utils/helpers.js';
   import { getUsersByIds, getAcceptedMembershipByUserId } from '../repositories/user.repository.js';
   import {
     findPendingRequests,
@@ -49,7 +49,9 @@ const data = await createRequest({
   destination: body.destination,
   requesterUserId,
   date: body.date,
-  communityId: membership.idComunidad
+  communityId: membership.idComunidad,
+  observations: String(body.observations ?? '').trim(),
+  restrictions: normalizeRestrictions(body.restrictions)
 });
     const usersById = await getUsersByIds([requesterUserId]);
     return shapeOpenRide(data, usersById[requesterUserId]);
