@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "build": "node --check src/main.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
