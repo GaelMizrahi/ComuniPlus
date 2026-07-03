@@ -40,7 +40,7 @@ export async function findReservationsByCourtAndDate(courtId, date) {
     .select(RESERVATION_COLUMNS)
     .eq('idCancha', courtId)
     .eq('dia', date)
-    .neq('estado', 'cancelada');
+    .neq('estado', 0);
 
   if (error) {
     console.error('===== SUPABASE ERROR findReservationsByCourtAndDate =====');

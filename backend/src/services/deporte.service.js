@@ -53,9 +53,6 @@ export function shapeCourt(court) {
     location: court.lugar,
     sport: court.deporte,
     capacity: court.cantidadMax,
-
-    // Estos dos campos no existen en la BD, pero el frontend los espera.
-    // No se guardan ni se consultan en Supabase.
     image: null,
     pricePerHour: 0
   };
@@ -63,7 +60,6 @@ export function shapeCourt(court) {
 
 export async function getCourts(sport) {
   const courts = await findCourts();
-
   const normalizedSport = normalize(sport);
 
   return courts

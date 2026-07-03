@@ -28,7 +28,7 @@ export async function findReservationForCourtDateTime({ courtId, date, time }) {
     .eq('idCancha', courtId)
     .eq('fecha', date)
     .eq('horario', time)
-    .neq('estado', 'cancelada')
+    .neq('estado', 0)
     .limit(1)
     .maybeSingle();
 
@@ -63,7 +63,7 @@ export async function findLinkedReservationById(reservationId, communityUserId) 
 export async function cancelReservationById(reservationId) {
   const { error } = await supabase
     .from('Reserva')
-    .update({ estado: 'cancelada' })
+    .update({ estado: 0 })
     .eq('id', reservationId);
 
   if (error) throw error;
