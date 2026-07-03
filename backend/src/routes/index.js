@@ -2,6 +2,8 @@ import { Router } from 'express';
 import authRoutes from './auth.routes.js';
 import rideRoutes from './ride.routes.js';
 import reservationRoutes from './reservation.routes.js';
+import deporteRoutes from './deporte.routes.js';
+import reservaRoutes from './reserva.routes.js';
 import { countRows } from '../repositories/user.repository.js';
 import { supabaseUrl, jwtSecret, port } from '../config/index.js';
 
@@ -25,5 +27,7 @@ router.get('/api/debug/supabase', async (_req, res) => {
 router.use(authRoutes);
 router.use(rideRoutes);
 router.use(reservationRoutes);
+router.use(deporteRoutes);
+router.use(reservaRoutes);
 
 export default router;

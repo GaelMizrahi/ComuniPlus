@@ -40,17 +40,17 @@
       throw err;
     }
 
-const membership = await getAcceptedMembershipByUserId(requesterUserId);
+    const membership = await getAcceptedMembershipByUserId(requesterUserId);
 
-const data = await createRequest({
-  seats,
-  departureTime: body.departureTime,
-  origin: body.origin,
-  destination: body.destination,
-  requesterUserId,
-  date: body.date,
-  communityId: membership.idComunidad
-});
+    const data = await createRequest({
+      seats,
+      departureTime: body.departureTime,
+      origin: body.origin,
+      destination: body.destination,
+      requesterUserId,
+      date: body.date,
+      communityId: membership.idComunidad
+    });
     const usersById = await getUsersByIds([requesterUserId]);
     return shapeOpenRide(data, usersById[requesterUserId]);
   }
