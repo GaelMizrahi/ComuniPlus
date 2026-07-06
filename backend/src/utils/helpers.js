@@ -16,6 +16,21 @@ export function buildWhatsAppLink(phone, message) {
   return `https://wa.me/${normalized.replace(/^\+/, '')}?text=${encodeURIComponent(message)}`;
 }
 
+
+export function normalizeRequirements(requirements) {
+  if (Array.isArray(requirements)) return requirements.map((item) => String(item).trim()).filter(Boolean);
+  if (!requirements) return [];
+  if (typeof requirements === 'string') {
+    try {
+      const parsed = JSON.parse(requirements);
+      if (Array.isArray(parsed)) return parsed.map((item) => String(item).trim()).filter(Boolean);
+    } catch {
+      return requirements.split(',').map((item) => item.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
 export function mapSupabaseError(error) {
   if (!error) return null;
   return { message: error.message, code: error.code, details: error.details, hint: error.hint };
@@ -33,6 +48,7 @@ export function shapeOpenRide(request, requester) {
     departureTime: request.horarioDeSalida,
     seatsNeeded: Number(request.espaciosSolicitados),
     seatsAvailable: Number(request.espaciosSolicitados),
+    requirements: normalizeRequirements(request.requisitos),
     requested: true
   };
 }
@@ -66,6 +82,7 @@ export function shapeReservation({ trip, request, currentUserId, requester, cond
     departureDate: request.diaSalida,
     departureTime: request.horarioDeSalida,
     seatsReserved: Number(request.espaciosSolicitados),
+    requirements: normalizeRequirements(request.requisitos),
     status: 'active',
     canComplete: isRideDue(request.diaSalida, request.horarioDeSalida),
     carDescription: trip.descripcionAuto ?? '',

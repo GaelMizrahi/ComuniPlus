@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
+import Deportes from './pages/deportes/Deportes.jsx';
+import MisReservas from './pages/deportes/MisReservas.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const authHeaders = (token) => ({ Authorization: `Bearer ${token}` });
@@ -21,7 +23,7 @@ const BottomNav = ({ active }) => {
   const items = [
     { key: 'HOME', to: '/home' },
     { key: 'VIAJES', to: '/viajes' },
-    { key: 'DEPORTES', to: '#' },
+    { key: 'DEPORTES', to: '/deportes' },
     { key: 'MERCADO', to: '#' },
     { key: 'PERFIL', to: '#' }
   ];
@@ -100,7 +102,7 @@ function Home({ user, onLogout }) {
       </section>
       <h3>Secciones</h3>
       <div className="grid2">
-        <div className="mod sport">🏟️<span>Deportes</span></div>
+        <Link to="/deportes" className="mod sport">🏟️<span>Deportes</span></Link>
         <Link to="/viajes" className="mod transport">🚗<span>Transporte</span></Link>
         <div className="mod">🛍️<span>Ventas</span></div>
         <div className="mod">💬<span>Consultas</span></div>
@@ -109,6 +111,21 @@ function Home({ user, onLogout }) {
   );
 }
 
+
+const RIDE_REQUIREMENT_OPTIONS = [
+  'Silla de ruedas',
+  'Valija',
+  'Mochila',
+  'Viaja con acompañante',
+  'Necesita ayuda para subir o bajar',
+  'Mascota',
+  'Otra restricción o necesidad'
+];
+
+const RequirementList = ({ requirements }) => {
+  if (!Array.isArray(requirements) || requirements.length === 0) return null;
+  return <div className="req-list">{requirements.map((item) => <span key={item}>✓ {item}</span>)}</div>;
+};
 
 function Viajes({ user, token, onLogout }) {
   const nav = useNavigate();
@@ -171,6 +188,7 @@ function Viajes({ user, token, onLogout }) {
             </div>
             <p className="seats">🟢 {ride.seatsAvailable} lugar{ride.seatsAvailable === 1 ? '' : 'es'} solicitado{ride.seatsAvailable === 1 ? '' : 's'}</p>
             <div className="route-box"><span>{ride.origin}</span><b>→</b><span>{ride.destination}</span></div>
+            <RequirementList requirements={ride.requirements} />
             {isMine ? (
               <div className="action-strip mine">
                 <span>Esta solicitud es tuya</span>
@@ -191,30 +209,53 @@ function Viajes({ user, token, onLogout }) {
   );
 }
 
+const emptyRideForm = {
+  origin: '',
+  destination: '',
+  date: '',
+  departureTime: '',
+  seatsNeeded: 2,
+  requirements: []
+};
+
 function Solicitar({ user, token, onLogout }) {
   const [msg, setMsg] = useState('');
-  const [form, setForm] = useState({
-    origin: '',
-    destination: '',
-    date: '',
-    departureTime: '',
-    seatsNeeded: 2
-  });
+  const [error, setError] = useState('');
+  const [form, setForm] = useState(emptyRideForm);
 
   const change = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const toggleRequirement = (requirement) => setForm((prev) => ({
+    ...prev,
+    requirements: prev.requirements.includes(requirement)
+      ? prev.requirements.filter((item) => item !== requirement)
+      : [...prev.requirements, requirement]
+  }));
 
   const submit = async (event) => {
     event.preventDefault();
-    if (form.seatsNeeded < 1 || form.seatsNeeded > 4) return setMsg('Lugares: 1 a 4');
+    setMsg('');
+    setError('');
+    if (form.seatsNeeded < 1 || form.seatsNeeded > 4) return setError('Lugares: 1 a 4');
+
+    const payload = {
+      origin: form.origin,
+      destination: form.destination,
+      date: form.date,
+      departureTime: form.departureTime,
+      seatsNeeded: form.seatsNeeded,
+      requirements: form.requirements
+    };
+
     const response = await fetch(`${API_URL}/api/rides/request`, {
       method: 'POST',
       headers: jsonHeaders(token),
-      body: JSON.stringify(form)
+      body: JSON.stringify(payload)
     });
     const data = await response.json();
     if (response.status === 401) return onLogout();
-    if (!response.ok) return setMsg(data.message || 'Error');
+    if (!response.ok) return setError(data.message || 'Error');
     setMsg('Solicitud de viaje publicada');
+    setForm(emptyRideForm);
   };
 
   return (
@@ -234,10 +275,19 @@ function Solicitar({ user, token, onLogout }) {
           </div>
           <label>LUGARES A BUSCAR</label>
           <div className="counter"><button type="button" onClick={() => change('seatsNeeded', Math.max(1, form.seatsNeeded - 1))}>−</button><b>{form.seatsNeeded}</b><button type="button" onClick={() => change('seatsNeeded', Math.min(4, form.seatsNeeded + 1))}>+</button></div>
+          <label>REQUISITOS DEL VIAJE</label>
+          <div className="checks">
+            {RIDE_REQUIREMENT_OPTIONS.map((requirement) => (
+              <button key={requirement} type="button" className={form.requirements.includes(requirement) ? 'checked' : ''} onClick={() => toggleRequirement(requirement)}>
+                {form.requirements.includes(requirement) ? '✓' : '+'} {requirement}
+              </button>
+            ))}
+          </div>
           <button className="btn green full">⊕ Publicar viaje</button>
         </form>
       </section>
       {msg && <p className="ok notice">{msg}</p>}
+      {error && <p className="error notice">{error}</p>}
     </Layout>
   );
 }
@@ -283,6 +333,7 @@ function Reservas({ user, token, onLogout }) {
             <div className="date-pill"><b>{formatDate(item.departureDate)}</b><span>{formatTime(item.departureTime)}</span></div>
           </div>
           <div className="route-box"><span>{item.origin}</span><b>→</b><span>{item.destination}</span></div>
+          <RequirementList requirements={item.requirements} />
           <p><b>Lugares:</b> {item.seatsReserved}</p>
           <div className="contact-box">
             <span>WhatsApp de {item.otherPersonName}</span>
@@ -326,6 +377,8 @@ export default function App() {
       <Route path="/viajes" element={<Protected user={user} token={token}><Viajes user={user} token={token} onLogout={onLogout} /></Protected>} />
       <Route path="/viajes/solicitar" element={<Protected user={user} token={token}><Solicitar user={user} token={token} onLogout={onLogout} /></Protected>} />
       <Route path="/reservas" element={<Protected user={user} token={token}><Reservas user={user} token={token} onLogout={onLogout} /></Protected>} />
+      <Route path="/deportes" element={<Protected user={user} token={token}><Deportes user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
+      <Route path="/deportes/mis-reservas" element={<Protected user={user} token={token}><MisReservas user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
     </Routes>
   );
 }
