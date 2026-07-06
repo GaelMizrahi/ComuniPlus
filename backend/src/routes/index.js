@@ -5,23 +5,47 @@ import reservationRoutes from './reservation.routes.js';
 import deporteRoutes from './deporte.routes.js';
 import reservaRoutes from './reserva.routes.js';
 import faltaJugadorRoutes from './faltaJugador.routes.js';
+import partidoRoutes from './partido.routes.js';
+
 import { countRows } from '../repositories/user.repository.js';
 import { supabaseUrl, jwtSecret, port } from '../config/index.js';
 
 const router = Router();
 
 router.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'comuniplus-backend', db: Boolean(supabaseUrl), auth: Boolean(jwtSecret), port });
+  res.json({
+    ok: true,
+    service: 'comuniplus-backend',
+    db: Boolean(supabaseUrl),
+    auth: Boolean(jwtSecret),
+    port
+  });
 });
 
 router.get('/api/debug/supabase', async (_req, res) => {
   try {
     const tables = await Promise.all(
-      ['Usuario', 'Comunidad', 'ComunidadUsuario', 'solicitudViaje', 'Viaje', 'ComunidadViaje'].map(countRows)
+      [
+        'Usuario',
+        'Comunidad',
+        'ComunidadUsuario',
+        'solicitudViaje',
+        'Viaje',
+        'ComunidadViaje'
+      ].map(countRows)
     );
-    res.json({ ok: true, supabaseUrl, tables });
+
+    res.json({
+      ok: true,
+      supabaseUrl,
+      tables
+    });
   } catch (error) {
-    res.status(500).json({ ok: false, message: 'No se pudo diagnosticar Supabase', detail: error.message });
+    res.status(500).json({
+      ok: false,
+      message: 'No se pudo diagnosticar Supabase',
+      detail: error.message
+    });
   }
 });
 
@@ -31,5 +55,6 @@ router.use(reservationRoutes);
 router.use(deporteRoutes);
 router.use(reservaRoutes);
 router.use(faltaJugadorRoutes);
+router.use(partidoRoutes);
 
 export default router;
