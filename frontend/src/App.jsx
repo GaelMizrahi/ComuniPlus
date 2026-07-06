@@ -334,7 +334,19 @@ export default function App() {
       <Route path="/deportes" element={<Protected user={user} token={token}><Deportes user={user} onLogout={onLogout} Layout={Layout} /></Protected>} />
       <Route path="/deportes/reservas" element={<Protected user={user} token={token}><ReservasDeportivas user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
       <Route path="/deportes/falta-jugador" element={<Protected user={user} token={token}><FaltaJugador user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
-      <Route path="/deportes/falta-jugador/crear" element={<Protected user={user} token={token}><CrearPartido user={user} onLogout={onLogout} Layout={Layout} /></Protected>} />
+      <Route
+  path="/deportes/falta-jugador/crear"
+  element={
+    <Protected user={user} token={token}>
+      <CrearPartido
+        user={user}
+        token={token}
+        onLogout={onLogout}
+        Layout={Layout}
+      />
+    </Protected>
+  }
+/>
       <Route path="/deportes/mis-reservas" element={<Protected user={user} token={token}><MisReservas user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
     </Routes>
   );

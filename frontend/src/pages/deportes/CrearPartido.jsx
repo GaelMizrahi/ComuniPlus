@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const API_URL = 'http://localhost:4000';
 
-export default function CrearPartido({ user, onLogout, Layout }) {
+export default function CrearPartido({ user, token, onLogout, Layout }) {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -21,13 +21,14 @@ export default function CrearPartido({ user, onLogout, Layout }) {
   const [success, setSuccess] = useState('');
 
   function getToken() {
-    return (
-      user?.token ||
-      localStorage.getItem('token') ||
-      localStorage.getItem('authToken') ||
-      localStorage.getItem('accessToken')
-    );
-  }
+  return (
+    token ||
+    localStorage.getItem('comuni_token') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('authToken') ||
+    localStorage.getItem('accessToken')
+  );
+}
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -39,31 +40,37 @@ export default function CrearPartido({ user, onLogout, Layout }) {
   }
 
   async function handleSubmit(e) {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      setLoading(true);
-      setError('');
-      setSuccess('');
+  try {
+    setLoading(true);
+    setError('');
+    setSuccess('');
 
-      const token = getToken();
+    const token = getToken();
 
-      const response = await fetch(`${API_URL}/api/partidos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          deporte: form.deporte,
-          titulo: form.titulo,
-          descripcion: form.descripcion,
-          dia: form.dia,
-          horario: form.horario,
-          lugar: form.lugar,
-          jugadoresNecesarios: Number(form.jugadoresNecesarios)
-        })
-      });
+    console.log('TOKEN QUE SE ENVÍA:', token);
+
+    if (!token) {
+      throw new Error('No hay token. Cerrá sesión e iniciá sesión de nuevo.');
+    }
+
+    const response = await fetch(`${API_URL}/api/partidos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        deporte: form.deporte,
+        titulo: form.titulo,
+        descripcion: form.descripcion,
+        dia: form.dia,
+        horario: form.horario,
+        lugar: form.lugar,
+        jugadoresNecesarios: Number(form.jugadoresNecesarios)
+      })
+    });
 
       const data = await response.json();
 
