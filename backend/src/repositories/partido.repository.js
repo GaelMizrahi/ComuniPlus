@@ -44,10 +44,62 @@ export async function findPartidosActivos() {
     .from('Partido')
     .select(PARTIDO_COLUMNS)
     .eq('estado', 1)
-    .order('dia', { ascending: true });
+    .order('dia', { ascending: true })
+    .order('horario', { ascending: true });
 
   if (error) {
     console.error('===== ERROR FIND PARTIDOS =====');
+    console.error(error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function findPartidoById(id) {
+  const { data, error } = await supabase
+    .from('Partido')
+    .select(PARTIDO_COLUMNS)
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('===== ERROR FIND PARTIDO BY ID =====');
+    console.error(error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function findJugadoresByPartido(idPartido) {
+  const { data = [], error } = await supabase
+    .from('PartidoJugador')
+    .select('id, idPartido, idComunidadUsuario, fechaDeAlta')
+    .eq('idPartido', idPartido);
+
+  if (error) {
+    console.error('===== ERROR FIND JUGADORES PARTIDO =====');
+    console.error(error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function unirseAPartido({ idPartido, idComunidadUsuario }) {
+  const { data, error } = await supabase
+    .from('PartidoJugador')
+    .insert({
+      idPartido,
+      idComunidadUsuario,
+      fechaDeAlta: new Date().toISOString()
+    })
+    .select('id, idPartido, idComunidadUsuario, fechaDeAlta')
+    .single();
+
+  if (error) {
+    console.error('===== ERROR UNIRSE A PARTIDO =====');
     console.error(error);
     throw error;
   }
