@@ -1,43 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-
+import Layout from '../../components/layout/Layout.jsx';
+import SectionHeader from '../../components/ui/SectionHeader.jsx';
+import ElevatedCard from '../../components/ui/ElevatedCard.jsx';
+import Chip from '../../components/ui/Chip.jsx';
+import Toast from '../../components/ui/Toast.jsx';
+import EmptyState from '../../components/ui/EmptyState.jsx';
 import SportFilter from '../../components/deportes/SportFilter.jsx';
-import CourtCard from '../../components/deportes/CourtCard.jsx';
 import Calendar from '../../components/deportes/Calendar.jsx';
 import TimeSlots from '../../components/deportes/TimeSlots.jsx';
 import ReservationSummary from '../../components/deportes/ReservationSummary.jsx';
+import { createReserva, getDeportes, getHorarios } from '../../services/deportesApi.js';
 
-import {
-  createReserva,
-  getDeportes,
-  getHorarios
-} from '../../services/deportesApi.js';
-
-const DEFAULT_SPORTS = [
-  'Fútbol masculino',
-  'Fútbol femenino',
-  'Tenis',
-  'Básquet',
-  'Patín',
-  'Pádel',
-  'Hockey',
-  'Gimnasia Artística',
-  'Vóley'
-];
+const DEFAULT_SPORTS = ['Fútbol masculino', 'Fútbol femenino', 'Tenis', 'Básquet', 'Patín', 'Pádel', 'Hockey', 'Gimnasia Artística', 'Vóley'];
 
 function normalizeHorarios(data) {
   if (Array.isArray(data)) return data;
-
   if (Array.isArray(data?.horarios)) return data.horarios;
-
   if (Array.isArray(data?.slots)) return data.slots;
-
   if (Array.isArray(data?.data)) return data.data;
-
   return [];
 }
 
-export default function Deportes({ user, token, onLogout, Layout }) {
+export default function ReservasDeportivas({ user, token, onLogout, Layout: LayoutProp }) {
+  const L = LayoutProp || Layout;
   const [sports, setSports] = useState(DEFAULT_SPORTS);
   const [selectedSport, setSelectedSport] = useState(DEFAULT_SPORTS[0]);
   const [courts, setCourts] = useState([]);
@@ -45,253 +31,124 @@ export default function Deportes({ user, token, onLogout, Layout }) {
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState([]);
   const [selectedTime, setSelectedTime] = useState('');
-  const [msg, setMsg] = useState('');
+  const [toast, setToast] = useState(null);
   const [error, setError] = useState('');
   const [loadingCourts, setLoadingCourts] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   useEffect(() => {
     let alive = true;
-
-    async function loadCourts() {
+    async function load() {
       try {
-        setLoadingCourts(true);
-        setError('');
-        setMsg('');
-
+        setLoadingCourts(true); setError('');
         const data = await getDeportes(token, selectedSport);
-
         if (!alive) return;
-
         setSports(Array.isArray(data?.sports) ? data.sports : DEFAULT_SPORTS);
         setCourts(Array.isArray(data?.courts) ? data.courts : []);
-        setSelectedCourt(null);
-        setDate('');
-        setSlots([]);
-        setSelectedTime('');
+        setSelectedCourt(null); setDate(''); setSlots([]); setSelectedTime('');
       } catch (err) {
         if (!alive) return;
-
-        if (err.status === 401) {
-          onLogout();
-          return;
-        }
-
-        setError(err.message || 'Error al cargar deportes');
-      } finally {
-        if (alive) setLoadingCourts(false);
-      }
+        if (err.status === 401) return onLogout();
+        setError(err.message || 'Error');
+      } finally { if (alive) setLoadingCourts(false); }
     }
-
-    loadCourts();
-
-    return () => {
-      alive = false;
-    };
+    load();
+    return () => { alive = false; };
   }, [token, selectedSport, onLogout]);
 
   useEffect(() => {
     let alive = true;
-
-    async function loadSlots() {
-      if (!selectedCourt || !date) {
-        setSlots([]);
-        setSelectedTime('');
-        return;
-      }
-
+    async function load() {
+      if (!selectedCourt || !date) { setSlots([]); setSelectedTime(''); return; }
       try {
-        setLoadingSlots(true);
-        setError('');
-        setSelectedTime('');
-
+        setLoadingSlots(true); setError(''); setSelectedTime('');
         const data = await getHorarios(token, selectedCourt.id, date);
-
         if (!alive) return;
-
-        const horarios = normalizeHorarios(data);
-
-        console.log('Horarios recibidos:', data);
-        console.log('Horarios normalizados:', horarios);
-
-        setSlots(horarios);
+        setSlots(normalizeHorarios(data));
       } catch (err) {
         if (!alive) return;
-
-        if (err.status === 401) {
-          onLogout();
-          return;
-        }
-
-        setSlots([]);
-        setError(err.message || 'Error al cargar horarios');
-      } finally {
-        if (alive) setLoadingSlots(false);
-      }
+        if (err.status === 401) return onLogout();
+        setSlots([]); setError(err.message || 'Error');
+      } finally { if (alive) setLoadingSlots(false); }
     }
-
-    loadSlots();
-
-    return () => {
-      alive = false;
-    };
+    load();
+    return () => { alive = false; };
   }, [token, selectedCourt, date, onLogout]);
 
-  const handleSelectCourt = (court) => {
-    setSelectedCourt(court);
-    setDate('');
-    setSlots([]);
-    setSelectedTime('');
-    setMsg('');
-    setError('');
-  };
-
-  const handleSelectDate = (newDate) => {
-    setDate(newDate);
-    setSlots([]);
-    setSelectedTime('');
-    setMsg('');
-    setError('');
-  };
+  const handleSelectCourt = (court) => { setSelectedCourt(court); setDate(''); setSlots([]); setSelectedTime(''); };
 
   const confirm = async () => {
-    setMsg('');
     setError('');
-
-    if (!selectedSport || !selectedCourt || !date || !selectedTime) {
-      setError('Seleccioná deporte, cancha, fecha y horario.');
-      return;
-    }
-
+    if (!selectedCourt || !date || !selectedTime) return setError('Seleccioná cancha, fecha y horario.');
     try {
       await createReserva(token, {
-        courtId: selectedCourt.id,
-        date,
-        time: selectedTime,
+        courtId: selectedCourt.id, date, time: selectedTime,
         sport: selectedCourt.sport || selectedSport,
-        cantidadJugadores:
-          selectedCourt.capacity ||
-          selectedCourt.cantidadMax ||
-          1
+        cantidadJugadores: selectedCourt.capacity || selectedCourt.cantidadMax || 1,
       });
-
-      setMsg('Reserva confirmada correctamente.');
-
-      const horariosActualizados = await getHorarios(
-        token,
-        selectedCourt.id,
-        date
-      );
-
-      const horarios = normalizeHorarios(horariosActualizados);
-
-      setSlots(horarios);
-      setSelectedTime('');
+      setToast({ message: 'Reserva confirmada', type: 'success' });
+      const updated = await getHorarios(token, selectedCourt.id, date);
+      setSlots(normalizeHorarios(updated)); setSelectedTime('');
     } catch (err) {
-      if (err.status === 401) {
-        onLogout();
-        return;
-      }
-
-      setError(err.message || 'Error al confirmar reserva');
+      if (err.status === 401) return onLogout();
+      setError(err.message || 'Error');
     }
   };
 
   return (
-    <Layout user={user} onLogout={onLogout} active="DEPORTES">
-      <div className="section-head">
-        <div>
-          <p className="eyebrow">Deportes</p>
-          <h1>Reservas deportivas</h1>
-        </div>
+    <L user={user} onLogout={onLogout} active="DEPORTES">
+      {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-        <Link to="/deportes/mis-reservas" className="mini-link">
-          Mis reservas
-        </Link>
-      </div>
+      <SectionHeader eyebrow="Deportes" title="Reservar cancha" link="/deportes/mis-reservas" linkText="Mis reservas" />
 
-      <SportFilter
-        sports={sports}
-        selectedSport={selectedSport}
-        onSelect={setSelectedSport}
-      />
+      <SportFilter sports={sports} selectedSport={selectedSport} onSelect={setSelectedSport} />
 
-      {msg && <p className="ok notice">{msg}</p>}
-      {error && <p className="error notice">{error}</p>}
+      {error && (
+        <p className="text-[13px] text-danger mb-3 animate-fade-in">{error}</p>
+      )}
 
-      <h3>Selecciona pista</h3>
-
+      {/* Courts */}
+      <h3 className="text-[14px] font-semibold text-text-secondary mb-3">Canchas</h3>
       {loadingCourts ? (
-        <p>Cargando canchas...</p>
+        <div className="space-y-2">
+          {[1, 2].map((i) => <div key={i} className="h-32 rounded-xl bg-surface-secondary animate-pulse" />)}
+        </div>
       ) : (
-        <>
-          <div className="court-list">
-            {courts.map((court) => (
-              <CourtCard
-                key={court.id}
-                court={court}
-                selected={selectedCourt?.id === court.id}
-                onSelect={handleSelectCourt}
-              />
-            ))}
-          </div>
-
-          {!courts.length && (
-            <p className="empty-state">
-              No hay canchas disponibles para este deporte.
-            </p>
-          )}
-        </>
+        <div className="flex flex-col gap-2 mb-5">
+          {courts.map((court) => (
+            <ElevatedCard key={court.id} onClick={() => handleSelectCourt(court)} className={`overflow-hidden ${selectedCourt?.id === court.id ? 'border-accent ring-1 ring-accent/20' : ''}`}>
+              <img src={court.image || 'https://placehold.co/640x360/f5f5f5/d4d4d4?text=Cancha'} alt={court.name} className="w-full h-32 object-cover" />
+              <div className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-[14px] font-semibold">{court.name}</h4>
+                    <p className="text-[12px] text-text-muted mt-0.5">{court.location}</p>
+                  </div>
+                  <p className="text-[14px] font-semibold text-text">${court.pricePerHour}<span className="text-[12px] font-normal text-text-muted">/h</span></p>
+                </div>
+              </div>
+            </ElevatedCard>
+          ))}
+          {courts.length === 0 && <EmptyState icon="🏟" message="No hay canchas disponibles" />}
+        </div>
       )}
 
-      {selectedCourt && (
-        <Calendar
-          value={date}
-          onChange={handleSelectDate}
-        />
-      )}
-
-      {selectedCourt && !date && (
-        <p className="empty-state">
-          Seleccioná una fecha para ver los horarios disponibles.
-        </p>
-      )}
+      {selectedCourt && <Calendar value={date} onChange={(d) => { setDate(d); setSlots([]); setSelectedTime(''); }} />}
 
       {selectedCourt && date && (
-        <>
-          {loadingSlots ? (
-            <p>Cargando horarios...</p>
-          ) : (
-            <TimeSlots
-              slots={slots}
-              selectedTime={selectedTime}
-              onSelect={setSelectedTime}
-            />
-          )}
-        </>
+        loadingSlots ? (
+          <div className="grid grid-cols-3 gap-2 my-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-10 rounded-lg bg-surface-secondary animate-pulse" />)}
+          </div>
+        ) : <TimeSlots slots={slots} selectedTime={selectedTime} onSelect={setSelectedTime} />
       )}
 
-      <ReservationSummary
-        court={selectedCourt}
-        date={date}
-        time={selectedTime}
-      />
+      <ReservationSummary court={selectedCourt} date={date} time={selectedTime} />
 
-      <button
-        className="btn green full"
-        type="button"
-        onClick={confirm}
-      >
+      <button onClick={confirm} className="w-full py-3 mt-4 bg-text text-white text-[14px] font-medium rounded-lg transition-all duration-150 active:scale-[0.98] disabled:opacity-40 hover:bg-text/90">
         Confirmar reserva
       </button>
-
-      <p className="muted small">
-        El importe de la reserva será agregado a la cuota mensual del socio.
-      </p>
-
-      <p className="muted small">
-        Las reservas pueden cancelarse sin costo hasta 36 horas antes del horario reservado.
-      </p>
-    </Layout>
+      <p className="text-[12px] text-text-muted text-center mt-3">El importe se agrega a la cuota mensual</p>
+    </L>
   );
 }

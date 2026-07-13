@@ -1,32 +1,25 @@
 import React from 'react';
-
-const formatDate = (date) => date ? new Date(`${date}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }) : 'Sin fecha';
-const formatTime = (time) => time ? String(time).slice(0, 5) : '--:--';
+import DatePill from '../ui/DatePill.jsx';
 
 export default function PartidoCard({ partido, onJoin, joining }) {
   return (
-    <article className="res-card elevated-card match-card">
-      <div className="card-top">
+    <article className="border border-border rounded-xl p-4 animate-fade-in">
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <p className="eyebrow">{partido.deporte}</p>
-          <strong>{partido.nivel}</strong>
+          <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-muted">{partido.deporte}</p>
+          <p className="text-[14px] font-semibold mt-0.5">{partido.nivel}</p>
         </div>
-        <div className="date-pill">
-          <b>{formatDate(partido.fecha)}</b>
-          <span>{formatTime(partido.horario)}</span>
-        </div>
+        <DatePill date={partido.fecha} time={partido.horario} />
       </div>
-
-      <div className="match-meta">
-        <span><b>Jugadores faltantes:</b> {partido.jugadoresFaltantes}</span>
-        <span><b>Estado:</b> {partido.estado}</span>
+      <div className="flex items-center gap-4 text-[13px] text-text-secondary mb-3">
+        <span>Faltan: <strong className="text-text">{partido.jugadoresFaltantes}</strong></span>
+        <span className="text-border">·</span>
+        <span>{partido.estado}</span>
       </div>
-
       <button
-        type="button"
-        className="btn blue full"
         onClick={() => onJoin(partido.id)}
         disabled={joining}
+        className="w-full py-2.5 bg-accent text-white text-[13px] font-medium rounded-lg active:scale-[0.99] transition-all disabled:opacity-40 hover:bg-accent-hover"
       >
         {joining ? 'Uniendo...' : 'Unirme'}
       </button>
