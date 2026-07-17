@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout.jsx';
+import SectionHeader from '../components/ui/SectionHeader.jsx';
 import Toast from '../components/ui/Toast.jsx';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4001';
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const jsonHeaders = (t) => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${t}` });
+
+const inputClass = "w-full py-3 px-4 bg-surface border border-border rounded-2xl text-[15px] font-medium text-text outline-none transition-all duration-200 placeholder:text-text-muted/40 focus:border-accent focus:shadow-input";
 
 export default function Solicitar({ user, token, onLogout }) {
   const nav = useNavigate();
@@ -30,46 +33,62 @@ export default function Solicitar({ user, token, onLogout }) {
     } finally { setLoading(false); }
   };
 
-  const inputClass = "w-full px-0 py-3 bg-transparent border-0 border-b border-border text-[15px] text-text outline-none transition-colors placeholder:text-text-muted focus:border-accent";
+  const inputGroup = (label, content) => (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted mb-2">{label}</p>
+      {content}
+    </div>
+  );
 
   return (
     <Layout user={user} onLogout={onLogout} active="VIAJES">
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-      <button onClick={() => nav(-1)} className="flex items-center gap-1 text-[13px] font-medium text-text-muted mb-6 active:opacity-60 transition-opacity">
+      <button onClick={() => nav(-1)} className="flex items-center gap-1 text-[13px] font-semibold text-text-muted mb-6 active:opacity-60 transition-opacity">
         ← Volver
       </button>
 
       <SectionHeader eyebrow="Transporte" title="Pedir viaje" />
 
-      <form onSubmit={submit} className="flex flex-col gap-1 mt-2">
-        <input value={form.origin} onChange={(e) => change('origin', e.target.value)} placeholder="Origen" className={inputClass} required />
-        <input value={form.destination} onChange={(e) => change('destination', e.target.value)} placeholder="Destino" className={inputClass} required />
+      <form onSubmit={submit} className="flex flex-col gap-5 mt-2">
+        {inputGroup('Origen',
+          <input value={form.origin} onChange={(e) => change('origin', e.target.value)} placeholder="¿Salís de...?"
+            className={inputClass} required />
+        )}
+        {inputGroup('Destino',
+          <input value={form.destination} onChange={(e) => change('destination', e.target.value)} placeholder="¿Vas a...?"
+            className={inputClass} required />
+        )}
 
-        <div className="grid grid-cols-2 gap-6 mt-4">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-muted mb-1">Fecha</p>
-            <input type="date" value={form.date} onChange={(e) => change('date', e.target.value)} className="w-full py-2 bg-transparent border-0 border-b border-border text-[15px] text-text outline-none focus:border-accent transition-colors" required />
-          </div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-muted mb-1">Hora</p>
-            <input type="time" value={form.departureTime} onChange={(e) => change('departureTime', e.target.value)} className="w-full py-2 bg-transparent border-0 border-b border-border text-[15px] text-text outline-none focus:border-accent transition-colors" required />
-          </div>
+        <div className="grid grid-cols-2 gap-4">
+          {inputGroup('Fecha',
+            <input type="date" value={form.date} onChange={(e) => change('date', e.target.value)}
+              className={inputClass} required />
+          )}
+          {inputGroup('Hora',
+            <input type="time" value={form.departureTime} onChange={(e) => change('departureTime', e.target.value)}
+              className={inputClass} required />
+          )}
         </div>
 
-        <div className="mt-4">
-          <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-muted mb-2">Lugares</p>
-          <div className="flex items-center gap-4">
-            <button type="button" onClick={() => change('seatsNeeded', Math.max(1, form.seatsNeeded - 1))} className="w-10 h-10 rounded-full border border-border text-text text-lg font-light flex items-center justify-center active:scale-95 transition-transform">−</button>
-            <span className="text-[18px] font-semibold min-w-[24px] text-center">{form.seatsNeeded}</span>
-            <button type="button" onClick={() => change('seatsNeeded', Math.min(4, form.seatsNeeded + 1))} className="w-10 h-10 rounded-full border border-border text-text text-lg font-light flex items-center justify-center active:scale-95 transition-transform">+</button>
+        {inputGroup('Lugares',
+          <div className="flex items-center gap-5">
+            <button type="button" onClick={() => change('seatsNeeded', Math.max(1, form.seatsNeeded - 1))}
+              className="w-11 h-11 rounded-2xl border border-border bg-surface text-text text-lg font-light flex items-center justify-center active:scale-95 transition-all duration-200 hover:border-accent/40">
+              −
+            </button>
+            <span className="text-[20px] font-extrabold min-w-[28px] text-center">{form.seatsNeeded}</span>
+            <button type="button" onClick={() => change('seatsNeeded', Math.min(4, form.seatsNeeded + 1))}
+              className="w-11 h-11 rounded-2xl border border-border bg-surface text-text text-lg font-light flex items-center justify-center active:scale-95 transition-all duration-200 hover:border-accent/40">
+              +
+            </button>
           </div>
-        </div>
+        )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 mt-8 bg-text text-white text-[14px] font-medium rounded-lg active:scale-[0.98] transition-all disabled:opacity-40 hover:bg-text/90"
+          className="w-full py-3.5 mt-4 bg-accent text-white text-[15px] font-bold rounded-xl shadow-fab transition-all duration-200 active:scale-[0.98] disabled:opacity-40"
         >
           {loading ? 'Publicando...' : 'Publicar'}
         </button>

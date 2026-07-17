@@ -5,9 +5,9 @@ export default function ReservationSummary({ court, date, time }) {
   const total = Number(court.pricePerHour ?? 0);
 
   return (
-    <div className="bg-surface-secondary rounded-xl p-4 my-4 animate-fade-in">
-      <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-muted mb-3">Resumen</p>
-      <div className="space-y-2">
+    <div className="bg-accent-light/50 rounded-2xl p-5 my-5 border border-accent/5 animate-fade-in">
+      <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted mb-4">Resumen</p>
+      <div className="space-y-3">
         {[
           ['Cancha', court.name],
           ['Fecha', date],
@@ -15,14 +15,14 @@ export default function ReservationSummary({ court, date, time }) {
           ['Precio/hora', `$${court.pricePerHour}`],
         ].map(([label, value]) => (
           <div key={label} className="flex justify-between text-[13px]">
-            <span className="text-text-muted">{label}</span>
-            <span className="font-medium text-text">{value}</span>
+            <span className="text-text-muted font-medium">{label}</span>
+            <span className="font-semibold text-text">{value}</span>
           </div>
         ))}
       </div>
-      <div className="border-t border-border mt-2 pt-2 flex justify-between">
-        <span className="text-[13px] font-semibold text-text">Total</span>
-        <span className="text-[15px] font-semibold text-text">${total}</span>
+      <div className="border-t border-accent/10 mt-3 pt-3 flex justify-between items-center">
+        <span className="text-[14px] font-bold text-text">Total</span>
+        <span className="text-[18px] font-extrabold text-accent">${total}</span>
       </div>
     </div>
   );

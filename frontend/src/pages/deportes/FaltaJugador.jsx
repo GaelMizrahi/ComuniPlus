@@ -52,40 +52,50 @@ export default function FaltaJugador({ user, token, onLogout, Layout: LayoutProp
 
       <SectionHeader eyebrow="Deportes" title="¿Falta un jugador?" />
 
-      <button onClick={() => nav('/deportes/falta-jugador/crear')} className="w-full py-2.5 bg-text text-white text-[13px] font-medium rounded-lg active:scale-[0.99] transition-all mb-5 hover:bg-text/90">
+      <button onClick={() => nav('/deportes/falta-jugador/crear')}
+        className="w-full py-3 bg-accent text-white text-[13px] font-bold rounded-xl shadow-fab active:scale-[0.98] transition-all duration-200 mb-6">
         + Crear partido
       </button>
 
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-5 -mx-5 px-5">
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-6 px-6 scrollbar-none">
         {SPORTS.map((s) => (
           <Chip key={s} active={selectedSport === s} onClick={() => setSelectedSport(s)}>{s}</Chip>
         ))}
       </div>
 
-      {error && <p className="text-[13px] text-danger mb-3 animate-fade-in">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-danger-light rounded-xl animate-fade-in">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-danger shrink-0">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p className="text-[13px] font-semibold text-danger">{error}</p>
+        </div>
+      )}
 
       {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-28 rounded-xl bg-surface-secondary animate-pulse" />)}
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => <div key={i} className="h-32 rounded-[18px] skeleton" />)}
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {partidos.map((p) => (
-            <ElevatedCard key={p.id} className="p-4 animate-fade-in">
+        <div className="flex flex-col gap-3">
+          {partidos.map((p, i) => (
+            <ElevatedCard key={p.id} className="p-4 animate-slide-up" style={{ animationDelay: `${i * 50}ms` }}>
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-text-muted">{p.deporte}</p>
-                  <p className="text-[14px] font-semibold mt-0.5">{p.nivel}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">{p.deporte}</p>
+                  <p className="text-[14px] font-bold mt-0.5">{p.nivel}</p>
                 </div>
                 <DatePill date={p.fecha} time={p.horario} />
               </div>
-              <div className="flex items-center gap-4 text-[13px] text-text-secondary mb-3">
-                <span>Faltan: <strong className="text-text">{p.jugadoresFaltantes}</strong></span>
+              <div className="flex items-center gap-4 text-[13px] text-text-secondary mb-4 font-medium">
+                <span>Faltan: <strong className="text-text font-bold">{p.jugadoresFaltantes}</strong></span>
                 <span className="text-border">·</span>
                 <span>{p.estado}</span>
               </div>
               <button onClick={() => join(p.id)} disabled={joiningId === p.id}
-                className="w-full py-2.5 bg-accent text-white text-[13px] font-medium rounded-lg active:scale-[0.99] transition-all disabled:opacity-40 hover:bg-accent-hover">
+                className="w-full py-3 bg-accent text-white text-[13px] font-bold rounded-xl shadow-fab active:scale-[0.98] transition-all duration-200 disabled:opacity-40">
                 {joiningId === p.id ? 'Uniendo...' : 'Unirme'}
               </button>
             </ElevatedCard>

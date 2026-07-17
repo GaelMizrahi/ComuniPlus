@@ -5,10 +5,10 @@ export default function Chip({ active, onClick, children, className = '' }) {
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition-all duration-150
+      className={`shrink-0 rounded-full px-4 py-[7px] text-[13px] font-semibold transition-all duration-200
         ${active
-          ? 'bg-text text-white'
-          : 'bg-transparent text-text-secondary border border-border hover:border-text/20 hover:text-text'
+          ? 'bg-accent text-white shadow-fab'
+          : 'bg-surface text-text-secondary border border-border hover:border-accent/30 hover:text-accent'
         } ${className}`}
     >
       {children}

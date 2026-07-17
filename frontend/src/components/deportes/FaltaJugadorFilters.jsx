@@ -1,20 +1,20 @@
 import React from 'react';
 
-export default function FaltaJugadorFilters({ sports, selectedSport, onSelect }) {
+export default function FaltaJugadorFilters({ sports, selected, onSelect }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 mb-5 -mx-5 px-5">
-      {sports.map((sport) => (
+    <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-6 px-6 scrollbar-none">
+      {sports.map((s) => (
         <button
-          key={sport}
+          key={s}
           type="button"
-          onClick={() => onSelect(sport)}
-          className={`shrink-0 rounded-full px-3 py-1.5 text-[13px] font-medium transition-all duration-150
-            ${selectedSport === sport
-              ? 'bg-text text-white'
-              : 'bg-transparent text-text-secondary border border-border hover:border-text/20 hover:text-text'
+          onClick={() => onSelect(s)}
+          className={`shrink-0 rounded-full px-4 py-[7px] text-[13px] font-semibold transition-all duration-200
+            ${selected === s
+              ? 'bg-accent text-white shadow-fab'
+              : 'bg-surface text-text-secondary border border-border hover:border-accent/30 hover:text-accent'
             }`}
         >
-          {sport}
+          {s}
         </button>
       ))}
     </div>

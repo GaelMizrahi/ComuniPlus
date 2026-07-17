@@ -79,7 +79,7 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
 
   const confirm = async () => {
     setError('');
-    if (!selectedCourt || !date || !selectedTime) return setError('Seleccioná cancha, fecha y horario.');
+    if (!selectedCourt || !date || !selectedTime) return setError('Selecciona cancha, fecha y horario.');
     try {
       await createReserva(token, {
         courtId: selectedCourt.id, date, time: selectedTime,
@@ -104,32 +104,43 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
       <SportFilter sports={sports} selectedSport={selectedSport} onSelect={setSelectedSport} />
 
       {error && (
-        <p className="text-[13px] text-danger mb-3 animate-fade-in">{error}</p>
+        <div className="flex items-center gap-2 mb-4 p-3 bg-danger-light rounded-xl animate-fade-in">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-danger shrink-0">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <p className="text-[13px] font-semibold text-danger">{error}</p>
+        </div>
       )}
 
-      {/* Courts */}
-      <h3 className="text-[14px] font-semibold text-text-secondary mb-3">Canchas</h3>
+      <h3 className="text-[14px] font-bold text-text-secondary mb-3">Canchas</h3>
       {loadingCourts ? (
-        <div className="space-y-2">
-          {[1, 2].map((i) => <div key={i} className="h-32 rounded-xl bg-surface-secondary animate-pulse" />)}
+        <div className="space-y-3">
+          {[1, 2].map((i) => <div key={i} className="h-36 rounded-[18px] skeleton" />)}
         </div>
       ) : (
-        <div className="flex flex-col gap-2 mb-5">
+        <div className="flex flex-col gap-3 mb-6">
           {courts.map((court) => (
-            <ElevatedCard key={court.id} onClick={() => handleSelectCourt(court)} className={`overflow-hidden ${selectedCourt?.id === court.id ? 'border-accent ring-1 ring-accent/20' : ''}`}>
-              <img src={court.image || 'https://placehold.co/640x360/f5f5f5/d4d4d4?text=Cancha'} alt={court.name} className="w-full h-32 object-cover" />
-              <div className="p-3">
+            <ElevatedCard key={court.id} onClick={() => handleSelectCourt(court)}
+              className={`overflow-hidden transition-all duration-300 ${
+                selectedCourt?.id === court.id
+                  ? 'ring-2 ring-accent shadow-glow'
+                  : 'hover:shadow-butter-lg'
+              }`}>
+              <img src={court.image || 'https://placehold.co/640x360/f1f3f8/8e99ab?text=Cancha'} alt={court.name} className="w-full h-32 object-cover" />
+              <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-[14px] font-semibold">{court.name}</h4>
-                    <p className="text-[12px] text-text-muted mt-0.5">{court.location}</p>
+                    <h4 className="text-[14px] font-bold">{court.name}</h4>
+                    <p className="text-[12px] text-text-muted mt-0.5 font-medium">{court.location}</p>
                   </div>
-                  <p className="text-[14px] font-semibold text-text">${court.pricePerHour}<span className="text-[12px] font-normal text-text-muted">/h</span></p>
+                  <p className="text-[15px] font-extrabold text-text">${court.pricePerHour}<span className="text-[12px] font-medium text-text-muted">/h</span></p>
                 </div>
               </div>
             </ElevatedCard>
           ))}
-          {courts.length === 0 && <EmptyState icon="🏟" message="No hay canchas disponibles" />}
+          {courts.length === 0 && <EmptyState icon="🏟️" message="No hay canchas disponibles" />}
         </div>
       )}
 
@@ -138,17 +149,18 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
       {selectedCourt && date && (
         loadingSlots ? (
           <div className="grid grid-cols-3 gap-2 my-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-10 rounded-lg bg-surface-secondary animate-pulse" />)}
+            {[1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-11 rounded-xl skeleton" />)}
           </div>
         ) : <TimeSlots slots={slots} selectedTime={selectedTime} onSelect={setSelectedTime} />
       )}
 
       <ReservationSummary court={selectedCourt} date={date} time={selectedTime} />
 
-      <button onClick={confirm} className="w-full py-3 mt-4 bg-text text-white text-[14px] font-medium rounded-lg transition-all duration-150 active:scale-[0.98] disabled:opacity-40 hover:bg-text/90">
+      <button onClick={confirm}
+        className="w-full py-3.5 mt-4 bg-accent text-white text-[15px] font-bold rounded-xl shadow-fab transition-all duration-200 active:scale-[0.98] disabled:opacity-40">
         Confirmar reserva
       </button>
-      <p className="text-[12px] text-text-muted text-center mt-3">El importe se agrega a la cuota mensual</p>
+      <p className="text-[12px] text-text-muted text-center mt-3 font-medium">El importe se agrega a la cuota mensual</p>
     </L>
   );
 }

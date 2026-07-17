@@ -2,9 +2,9 @@ import React from 'react';
 
 export default function FAB({ onClick, children, color = 'primary' }) {
   const colors = {
-    primary: 'bg-primary hover:bg-primary-dark shadow-fab',
-    success: 'bg-success hover:bg-success/90 shadow-[0_4px_16px_rgba(59,141,63,0.35)]',
-    danger: 'bg-danger hover:bg-danger/90 shadow-[0_4px_16px_rgba(239,68,68,0.35)]',
+    primary: 'bg-accent shadow-fab',
+    success: 'bg-success shadow-[0_4px_16px_rgba(14,164,114,0.30)]',
+    danger: 'bg-danger shadow-[0_4px_16px_rgba(229,62,62,0.30)]',
   };
 
   return (

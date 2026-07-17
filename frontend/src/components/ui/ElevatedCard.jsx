@@ -4,8 +4,10 @@ export default function ElevatedCard({ children, className = '', onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`bg-surface border border-border rounded-xl transition-all duration-150 ${
-        onClick ? 'cursor-pointer active:scale-[0.99] hover:shadow-md' : ''
+      className={`bg-surface rounded-[18px] shadow-butter transition-all duration-300 ${
+        onClick
+          ? 'cursor-pointer active:scale-[0.98] hover:shadow-butter-lg'
+          : ''
       } ${className}`}
     >
       {children}
