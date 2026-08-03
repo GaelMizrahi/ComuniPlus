@@ -63,7 +63,7 @@ export function shapeReservation({ trip, request, currentUserId, requester, cond
     conductorName: getFullName(conductor),
     origin: request.lugarDeSalida,
     destination: request.lugarDeLlegada,
-    departureDate: request.diaSalida,
+    deparutureDate: request.diaSalida,
     departureTime: request.horarioDeSalida,
     seatsReserved: Number(request.espaciosSolicitados),
     status: 'active',

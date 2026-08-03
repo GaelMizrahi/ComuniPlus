@@ -11,6 +11,7 @@ const inputClass = "w-full py-3 px-4 bg-surface border border-border rounded-2xl
 
 export default function Solicitar({ user, token, onLogout }) {
   const nav = useNavigate();
+  const today = new Date().toLocaleDateString('en-CA');
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ origin: '', destination: '', date: '', departureTime: '', seatsNeeded: 2 });
@@ -62,9 +63,8 @@ export default function Solicitar({ user, token, onLogout }) {
 
         <div className="grid grid-cols-2 gap-4">
           {inputGroup('Fecha',
-            <input type="date" value={form.date} onChange={(e) => change('date', e.target.value)}
-              className={inputClass} required />
-          )}
+              <input type="date" value={form.date} min={today} onChange={(e) => change('date', e.target.value)} className={inputClass} required/>
+          )} 
           {inputGroup('Hora',
             <input type="time" value={form.departureTime} onChange={(e) => change('departureTime', e.target.value)}
               className={inputClass} required />
