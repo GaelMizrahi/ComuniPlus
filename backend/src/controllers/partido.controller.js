@@ -20,7 +20,7 @@ export async function crearPartido(req, res) {
 
 export async function listarPartidos(req, res) {
   try {
-    const partidos = await partidoService.listarPartidos();
+    const partidos = await partidoService.listarPartidos(req.user.idUsuario);
     res.json(partidos);
   } catch (error) {
     console.error('===== ERROR LISTAR PARTIDOS =====');
@@ -28,6 +28,24 @@ export async function listarPartidos(req, res) {
 
     res.status(error.statusCode || 500).json({
       message: error.message || 'Error al listar partidos'
+    });
+  }
+}
+
+export async function unirsePartido(req, res) {
+  try {
+    const partido = await partidoService.unirsePartido(
+      req.user.idUsuario,
+      req.params.id
+    );
+
+    res.json(partido);
+  } catch (error) {
+    console.error('===== ERROR UNIRSE PARTIDO =====');
+    console.error(error);
+
+    res.status(error.statusCode || 500).json({
+      message: error.message || 'Error al unirse al partido'
     });
   }
 }

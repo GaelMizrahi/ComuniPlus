@@ -5,7 +5,22 @@ import Toast from '../../components/ui/Toast.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
+<<<<<<< HEAD
 const inputClass = "w-full py-3 px-4 bg-surface border border-border rounded-2xl text-[15px] font-medium text-text outline-none transition-all duration-200 placeholder:text-text-muted/40 focus:border-accent focus:shadow-input";
+=======
+export default function CrearPartido({ user, token, onLogout, Layout }) {
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    deporte: 'Tenis',
+    titulo: '',
+    descripcion: '',
+    dia: '',
+    horario: '',
+    lugar: '',
+    jugadoresNecesarios: 1
+  });
+>>>>>>> origin/FaltaUnJugador
 
 export default function CrearPartido({ user, onLogout, Layout: LayoutProp }) {
   const L = LayoutProp || Layout;
@@ -14,11 +29,24 @@ export default function CrearPartido({ user, onLogout, Layout: LayoutProp }) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ deporte: 'Tenis', titulo: '', descripcion: '', dia: '', horario: '', lugar: '', jugadoresNecesarios: 1 });
 
+<<<<<<< HEAD
   function getToken() { return user?.token || localStorage.getItem('token') || localStorage.getItem('authToken') || localStorage.getItem('accessToken'); }
+=======
+  function getToken() {
+  return (
+    token ||
+    localStorage.getItem('comuni_token') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('authToken') ||
+    localStorage.getItem('accessToken')
+  );
+}
+>>>>>>> origin/FaltaUnJugador
 
   function handleChange(e) { const { name, value } = e.target; setForm((p) => ({ ...p, [name]: value })); }
 
   async function handleSubmit(e) {
+<<<<<<< HEAD
     e.preventDefault(); setLoading(true);
     try {
       const token = getToken();
@@ -32,6 +60,56 @@ export default function CrearPartido({ user, onLogout, Layout: LayoutProp }) {
       setToast({ message: 'Partido creado', type: 'success' });
       setTimeout(() => nav('/deportes/falta-jugador'), 1000);
     } catch (err) { setToast({ message: err.message, type: 'error' }); } finally { setLoading(false); }
+=======
+  e.preventDefault();
+
+  try {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    const token = getToken();
+
+    console.log('TOKEN QUE SE ENVÍA:', token);
+
+    if (!token) {
+      throw new Error('No hay token. Cerrá sesión e iniciá sesión de nuevo.');
+    }
+
+    const response = await fetch(`${API_URL}/api/partidos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        deporte: form.deporte,
+        titulo: form.titulo,
+        descripcion: form.descripcion,
+        dia: form.dia,
+        horario: form.horario,
+        lugar: form.lugar,
+        jugadoresNecesarios: Number(form.jugadoresNecesarios)
+      })
+    });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al crear partido');
+      }
+
+      setSuccess('Partido creado correctamente');
+
+      setTimeout(() => {
+        navigate('/deportes/falta-jugador');
+      }, 800);
+    } catch (err) {
+      setError(err.message || 'Error al crear partido');
+    } finally {
+      setLoading(false);
+    }
+>>>>>>> origin/FaltaUnJugador
   }
 
   const today = new Date().toISOString().slice(0, 10);
