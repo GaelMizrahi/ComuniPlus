@@ -1,7 +1,24 @@
 import { supabase } from '../config/index.js';
 
-const COURT_COLUMNS = 'id, numero, lugar, idComunidad, cantidadMax, deporte';
-const RESERVATION_COLUMNS = 'id, horario, dia, deporte, idCancha, cantidadJugadores, estado, fechaDeAlta';
+const COURT_COLUMNS = `
+  id,
+  numero,
+  lugar,
+  idComunidad,
+  cantidadMax,
+  deporte
+`;
+
+const RESERVATION_COLUMNS = `
+  id,
+  horario,
+  dia,
+  deporte,
+  idCancha,
+  cantidadJugadores,
+  estado,
+  fechaDeAlta
+`;
 
 export async function findCourts() {
   const { data = [], error } = await supabase
@@ -15,7 +32,17 @@ export async function findCourts() {
     throw error;
   }
 
-  return data;
+  return data.map((court) => ({
+    ...court,
+
+    // Nombres que puede esperar el frontend
+    nombre: `Cancha ${court.numero}`,
+    ubicacion: court.lugar,
+
+    // Estos campos no existen en Cancha actualmente
+    imagen: null,
+    precioPorHora: null
+  }));
 }
 
 export async function findCourtById(courtId) {
@@ -31,7 +58,17 @@ export async function findCourtById(courtId) {
     throw error;
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  return {
+    ...data,
+    nombre: `Cancha ${data.numero}`,
+    ubicacion: data.lugar,
+    imagen: null,
+    precioPorHora: null
+  };
 }
 
 export async function findReservationsByCourtAndDate(courtId, date) {
@@ -43,7 +80,9 @@ export async function findReservationsByCourtAndDate(courtId, date) {
     .neq('estado', 0);
 
   if (error) {
-    console.error('===== SUPABASE ERROR findReservationsByCourtAndDate =====');
+    console.error(
+      '===== SUPABASE ERROR findReservationsByCourtAndDate ====='
+    );
     console.error(error);
     throw error;
   }

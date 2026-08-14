@@ -9,15 +9,16 @@ export async function getDeportes(req, res) {
       courts
     });
   } catch (error) {
-    console.error('===== ERROR GET DEPORTES =====');
-    console.error(error);
-    console.error(error.message);
-    console.error(error.stack);
+    const status = error.statusCode || 500;
+    const message =
+      status === 500 ? 'Error al listar deportes' : error.message;
 
-    res.status(error.statusCode || 500).json({
-      message: error.message,
-      detail: error
-    });
+    const body =
+      status === 500
+        ? { message, detail: error.message }
+        : { message };
+
+    res.status(status).json(body);
   }
 }
 
@@ -30,14 +31,15 @@ export async function getHorarios(req, res) {
 
     res.json(slots);
   } catch (error) {
-    console.error('===== ERROR GET HORARIOS =====');
-    console.error(error);
-    console.error(error.message);
-    console.error(error.stack);
+    const status = error.statusCode || 500;
+    const message =
+      status === 500 ? 'Error al listar horarios' : error.message;
 
-    res.status(error.statusCode || 500).json({
-      message: error.message,
-      detail: error
-    });
+    const body =
+      status === 500
+        ? { message, detail: error.message }
+        : { message };
+
+    res.status(status).json(body);
   }
 }

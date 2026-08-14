@@ -86,7 +86,9 @@ export async function findReservationForCourtDateTime({
     .maybeSingle();
 
   if (error) {
-    console.error('===== ERROR FIND RESERVATION FOR COURT DATE TIME =====');
+    console.error(
+      '===== ERROR FIND RESERVATION FOR COURT DATE TIME ====='
+    );
     console.error(error);
     throw error;
   }
@@ -137,7 +139,9 @@ export async function findLinkedReservationById(
     .maybeSingle();
 
   if (error) {
-    console.error('===== ERROR FIND LINKED RESERVATION BY ID =====');
+    console.error(
+      '===== ERROR FIND LINKED RESERVATION BY ID ====='
+    );
     console.error(error);
     throw error;
   }
