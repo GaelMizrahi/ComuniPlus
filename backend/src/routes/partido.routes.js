@@ -10,9 +10,9 @@ import {
 
 const router = Router();
 
-router.get('/api/partidos', authMiddleware, listarPartidos);
-router.post('/api/partidos', authMiddleware, crearPartido);
-router.post('/api/partidos/:id/unirse', authMiddleware, unirsePartido);
-router.delete('/api/partidos/:id', authMiddleware, eliminarPartido);
+router.get('/partidos', authMiddleware, listarPartidos);
+router.post('/partidos', authMiddleware, crearPartido);
+router.post('/partidos/:id/unirse', authMiddleware, unirsePartido);
+router.delete('/partidos/:id', authMiddleware, eliminarPartido);
 
 export default router;

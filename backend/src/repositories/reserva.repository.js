@@ -116,9 +116,10 @@ export async function findUserReservations(communityUserId) {
     throw error;
   }
 
-  return data;
+  return data.filter(
+    (item) => item.Reserva && Number(item.Reserva.estado) !== 0
+  );
 }
-
 export async function findLinkedReservationById(
   reservationId,
   communityUserId

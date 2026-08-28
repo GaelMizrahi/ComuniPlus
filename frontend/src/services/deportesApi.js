@@ -79,9 +79,11 @@ export async function createReserva(token, payload) {
 
 export async function getMisReservas(token) {
   const response = await fetch(
-    `${API_URL}/api/reservas/mias`,
+    `${API_URL}/api/reservas/mias?t=${Date.now()}`,
     {
-      headers: authHeaders(token)
+      method: 'GET',
+      headers: authHeaders(token),
+      cache: 'no-store'
     }
   );
 
