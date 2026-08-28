@@ -1,4 +1,4 @@
-  import { asNumber, shapeOpenRide } from '../utils/helpers.js';
+  import { asNumber, normalizeRequirements, shapeOpenRide } from '../utils/helpers.js';
   import { getUsersByIds, getAcceptedMembershipByUserId } from '../repositories/user.repository.js';
   import {
     findPendingRequests,
@@ -40,17 +40,18 @@
       throw err;
     }
 
-const membership = await getAcceptedMembershipByUserId(requesterUserId);
+    const membership = await getAcceptedMembershipByUserId(requesterUserId);
 
-const data = await createRequest({
-  seats,
-  departureTime: body.departureTime,
-  origin: body.origin,
-  destination: body.destination,
-  requesterUserId,
-  date: body.date,
-  communityId: membership.idComunidad
-});
+    const data = await createRequest({
+      seats,
+      departureTime: body.departureTime,
+      origin: body.origin,
+      destination: body.destination,
+      requesterUserId,
+      date: body.date,
+      communityId: membership.idComunidad,
+      requirements: normalizeRequirements(body.requirements)
+    });
     const usersById = await getUsersByIds([requesterUserId]);
     return shapeOpenRide(data, usersById[requesterUserId]);
   }
@@ -80,6 +81,10 @@ const data = await createRequest({
 
     const existingTrip = await findTripByRequestId(request.id);
     if (existingTrip) {
+      if (Number(existingTrip.idConductor) === conductorId) {
+        return { trip: existingTrip, request, currentUserId: conductorId, requesterId: request.idSolicitante, conductorId };
+      }
+
       const err = new Error('Esta solicitud ya fue tomada');
       err.statusCode = 400;
       throw err;
@@ -95,7 +100,11 @@ const data = await createRequest({
       requestId: request.id
     });
 
-    await createCommunityTrip(conductorMembership.idComunidad, trip.id);
+    try {
+      await createCommunityTrip(conductorMembership.idComunidad, trip.id);
+    } catch (error) {
+      console.warn('No se pudo vincular el viaje a la comunidad, pero la reserva quedó creada', error.message);
+    }
 
     return { trip, request, currentUserId: conductorId, requesterId: request.idSolicitante, conductorId };
   }

@@ -1,13 +1,13 @@
 import { supabase } from '../config/index.js';
 
-const COURT_COLUMNS = 'id, numero, lugar, idComunidad, cantidadMax, deporte';
-const RESERVATION_COLUMNS = 'id, horario, dia, deporte, idCancha, cantidadJugadores, estado, fechaDeAlta';
+const COURT_COLUMNS = 'id, nombre, ubicacion, imagen, precioPorHora, deporte';
+const RESERVATION_COLUMNS = 'id, idCancha, fecha, horario, estado';
 
 export async function findCourts() {
   const { data = [], error } = await supabase
     .from('Cancha')
     .select(COURT_COLUMNS)
-    .order('numero', { ascending: true });
+    .order('nombre', { ascending: true });
 
   if (error) {
     console.error('===== SUPABASE ERROR findCourts =====');
@@ -40,7 +40,7 @@ export async function findReservationsByCourtAndDate(courtId, date) {
     .select(RESERVATION_COLUMNS)
     .eq('idCancha', courtId)
     .eq('dia', date)
-    .neq('estado', 0);
+    .neq('estado', 'cancelada');
 
   if (error) {
     console.error('===== SUPABASE ERROR findReservationsByCourtAndDate =====');

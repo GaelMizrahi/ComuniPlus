@@ -1,5 +1,6 @@
 import { asNumber } from '../utils/helpers.js';
 import { getAcceptedMembershipByUserId } from '../repositories/user.repository.js';
+
 import {
   getCourt,
   shapeCourt,
@@ -15,29 +16,22 @@ import {
   cancelReservationById
 } from '../repositories/reserva.repository.js';
 
-function estadoTexto(estado) {
-  if (Number(estado) === 0) return 'cancelada';
-  if (Number(estado) === 1) return 'confirmada';
-  return 'desconocido';
-}
-
 function shapeSportReservation(row) {
-  const reservation = row.Reserva ?? row;
-  const court = reservation.Cancha ?? {};
+  const reservation = row?.Reserva ?? row;
+  const court = reservation?.Cancha ?? {};
 
   return {
     id: reservation.id,
-    court: court.numero ? `Cancha ${court.numero}` : 'Cancha',
+    court: court.nombre ?? court.numero ?? '',
     courtId: reservation.idCancha,
-    date: reservation.dia,
+    date: reservation.dia ?? reservation.fecha,
     time: String(reservation.horario ?? '').slice(0, 5),
-    sport: reservation.deporte,
-    status: estadoTexto(reservation.estado),
-    estado: reservation.estado,
-    cantidadJugadores: reservation.cantidadJugadores,
-    pricePerHour: 0,
-    total: 0,
-    courtDetail: court.id ? shapeCourt(court) : null
+    status: reservation.estado ?? 1,
+    sport: reservation.deporte ?? court.deporte ?? '',
+    cantidadJugadores: reservation.cantidadJugadores ?? 1,
+    pricePerHour: Number(court.precioPorHora ?? 0),
+    total: Number(court.precioPorHora ?? 0),
+    courtDetail: shapeCourt(court)
   };
 }
 
@@ -45,12 +39,14 @@ function reservationDateTime(date, time) {
   return new Date(`${date}T${String(time).slice(0, 5)}:00`);
 }
 
-export async function createSportReservation(userId, body) {
-  const currentUserId = asNumber(userId);
+export async function createSportReservation(body, currentUserId) {
   const courtId = asNumber(body.courtId ?? body.idCancha);
-  const date = String(body.date ?? body.dia ?? '').trim();
+  const cantidadJugadores = asNumber(
+    body.cantidadJugadores ?? body.players ?? body.jugadores
+  );
+
+  const date = String(body.date ?? body.fecha ?? '').trim();
   const time = String(body.time ?? body.horario ?? '').slice(0, 5);
-  const cantidadJugadores = asNumber(body.cantidadJugadores) || 1;
 
   if (!currentUserId || !courtId || !date || !time) {
     const err = new Error('Faltan campos obligatorios');
@@ -80,7 +76,7 @@ export async function createSportReservation(userId, body) {
     date,
     time,
     sport,
-    cantidadJugadores
+    cantidadJugadores: cantidadJugadores || 1
   });
 
   await linkReservationToCommunityUser({
@@ -96,6 +92,7 @@ export async function createSportReservation(userId, body) {
 
 export async function getMySportReservations(userId) {
   const membership = await getAcceptedMembershipByUserId(asNumber(userId));
+
   const rows = await findUserReservations(membership.id);
 
   return rows
@@ -126,10 +123,18 @@ export async function cancelSportReservation(userId, reservationId) {
   }
 
   const reservation = linked.Reserva;
-  const startsAt = reservationDateTime(reservation.dia, reservation.horario);
+
+  const startsAt = reservationDateTime(
+    reservation.dia ?? reservation.fecha,
+    reservation.horario
+  );
+
   const limit = Date.now() + 36 * 60 * 60 * 1000;
 
-  if (!Number.isFinite(startsAt.getTime()) || startsAt.getTime() <= limit) {
+  if (
+    !Number.isFinite(startsAt.getTime()) ||
+    startsAt.getTime() <= limit
+  ) {
     const err = new Error(
       'Solo podés cancelar reservas con más de 36 horas de anticipación'
     );
@@ -140,8 +145,4 @@ export async function cancelSportReservation(userId, reservationId) {
   await cancelReservationById(parsedReservationId);
 
   return { ok: true };
-}
-
-export async function getUpdatedTimeSlots(courtId, date) {
-  return getCourtTimeSlots(courtId, date);
 }
