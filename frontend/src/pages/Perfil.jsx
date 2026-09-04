@@ -43,34 +43,63 @@ export default function Perfil({ user, onLogout }) {
     <Layout user={user} onLogout={onLogout} active="PERFIL">
       <div className="flex flex-col items-center text-center mb-10 animate-fade-in">
         <img
-          src={`https://i.pravatar.cc/160?u=${user.email || user.fullName}`}
+          src={user.foto}
           alt={user.fullName}
           className="w-20 h-20 rounded-full object-cover ring-4 ring-accent/10 mb-4"
         />
-        <h2 className="text-[20px] font-extrabold tracking-[-0.02em]">{user.fullName}</h2>
-        <p className="text-[13px] text-text-muted mt-1 font-medium">{user.community}</p>
-        <p className="text-[12px] text-text-muted/60 mt-0.5 font-medium">Socio #{user.nroSocio}</p>
+
+        <h2 className="text-[20px] font-extrabold tracking-[-0.02em]">
+          {user.fullName}
+        </h2>
+
+        <p className="text-[13px] text-text-muted mt-1 font-medium">
+          {user.community}
+        </p>
+
+        <p className="text-[12px] text-text-muted/60 mt-0.5 font-medium">
+          Socio #{user.nroSocio}
+        </p>
       </div>
 
       <div className="flex flex-col gap-2 mb-8">
         {menuItems.map((item, i) => (
-          <ElevatedCard key={item.label} className="flex items-center gap-3.5 p-4 active:scale-[0.98] cursor-pointer" style={{ animationDelay: `${i * 50}ms` }}>
+          <ElevatedCard
+            key={item.label}
+            className="flex items-center gap-3.5 p-4 active:scale-[0.98] cursor-pointer"
+            style={{ animationDelay: `${i * 50}ms` }}
+          >
             <div className="w-10 h-10 rounded-[12px] bg-accent-light flex items-center justify-center shrink-0">
               {menuIcons[item.icon]}
             </div>
+
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-bold">{item.label}</p>
-              <p className="text-[12px] text-text-muted mt-[1px] font-medium">{item.desc}</p>
+              <p className="text-[12px] text-text-muted mt-[1px] font-medium">
+                {item.desc}
+              </p>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted/30 shrink-0">
+
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-text-muted/30 shrink-0"
+            >
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </ElevatedCard>
         ))}
       </div>
 
-      <button onClick={onLogout}
-        className="w-full py-3 text-[13px] font-medium text-text-muted hover:text-danger transition-colors duration-200">
+      <button
+        onClick={onLogout}
+        className="w-full py-3 text-[13px] font-medium text-text-muted hover:text-danger transition-colors duration-200"
+      >
         Cerrar sesión
       </button>
     </Layout>
