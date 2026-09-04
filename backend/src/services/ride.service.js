@@ -174,6 +174,7 @@ export async function offerRide(
   const trip = await createTrip({
   espaciosDisponibles,
   horarioDeSalida: request.horarioDeSalida,
+  diaSalida: request.diaSalida,
   descripcionAuto: body.descripcionAuto ?? '',
   lugarDeSalida: request.lugarDeSalida,
   lugarDeLlegada: request.lugarDeLlegada,
