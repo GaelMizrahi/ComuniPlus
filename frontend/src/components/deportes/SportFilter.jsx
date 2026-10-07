@@ -1,6 +1,9 @@
 import React from 'react';
+import { useDeportes } from '../../context/DeportesContext';
 
-export default function SportFilter({ sports, selectedSport, onSelect }) {
+export default function SportFilter() {
+  const { sports, selectedSport, setSelectedSport } = useDeportes();
+
   return (
     <div className="sport-filter">
       {sports.map((sport) => (
@@ -8,7 +11,7 @@ export default function SportFilter({ sports, selectedSport, onSelect }) {
           key={sport}
           type="button"
           className={selectedSport === sport ? 'active' : ''}
-          onClick={() => onSelect(sport)}
+          onClick={() => setSelectedSport(sport)}
         >
           {sport}
         </button>

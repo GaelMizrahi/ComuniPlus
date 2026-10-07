@@ -7,12 +7,12 @@ import Chip from '../../components/ui/Chip.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 import SportFilter from '../../components/deportes/SportFilter.jsx';
+import { useDeportes, DEFAULT_SPORTS } from '../../context/DeportesContext';
 import Calendar from '../../components/deportes/Calendar.jsx';
 import TimeSlots from '../../components/deportes/TimeSlots.jsx';
 import ReservationSummary from '../../components/deportes/ReservationSummary.jsx';
 import { createReserva, getDeportes, getHorarios } from '../../services/deportesApi.js';
 
-const DEFAULT_SPORTS = ['Fútbol masculino', 'Fútbol femenino', 'Tenis', 'Básquet', 'Patín', 'Pádel', 'Hockey', 'Gimnasia Artística', 'Vóley'];
 
 function normalizeHorarios(data) {
   if (Array.isArray(data)) return data;
@@ -24,8 +24,7 @@ function normalizeHorarios(data) {
 
 export default function ReservasDeportivas({ user, token, onLogout, Layout: LayoutProp }) {
   const L = LayoutProp || Layout;
-  const [sports, setSports] = useState(DEFAULT_SPORTS);
-  const [selectedSport, setSelectedSport] = useState(DEFAULT_SPORTS[0]);
+  const { sports, setSports, selectedSport } = useDeportes();
   const [courts, setCourts] = useState([]);
   const [selectedCourt, setSelectedCourt] = useState(null);
   const [date, setDate] = useState('');
@@ -101,7 +100,7 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
 
       <SectionHeader eyebrow="Deportes" title="Reservar cancha" link="/deportes/mis-reservas" linkText="Mis reservas" />
 
-      <SportFilter sports={sports} selectedSport={selectedSport} onSelect={setSelectedSport} />
+      <SportFilter />
 
       {error && (
         <div className="flex items-center gap-2 mb-4 p-3 bg-danger-light rounded-xl animate-fade-in">
