@@ -12,19 +12,7 @@ import EmptyState from '../../components/ui/EmptyState.jsx';
 const API_URL =
   import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
-const SPORTS = [
-  'Todos',
-  'Fútbol femenino',
-  'Fútbol masculino',
-  'Pádel',
-  'Tenis',
-  'Running',
-  'Básquet',
-  'Patín',
-  'Hockey',
-  'Gimnasia Artística',
-  'Vóley',
-];
+import { useDeportes } from '../../context/DeportesContext';
 
 export default function FaltaJugador({
   user,
@@ -35,7 +23,7 @@ export default function FaltaJugador({
   const L = LayoutProp || Layout;
   const nav = useNavigate();
 
-  const [selectedSport, setSelectedSport] = useState('Todos');
+  const { sports, selectedSport, setSelectedSport } = useDeportes();
   const [partidos, setPartidos] = useState([]);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState('');
@@ -189,7 +177,7 @@ export default function FaltaJugador({
       </p>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-6 px-6 scrollbar-none">
-        {SPORTS.map((sport) => (
+        {['Todos', ...(sports || [])].map((sport) => (
           <Chip
             key={sport}
             active={selectedSport === sport}

@@ -1,3 +1,4 @@
+````markdown
 # Comuni+ MVP
 
 <!-- Cambio mínimo para actualizar esta rama con los últimos ajustes del MVP. -->
@@ -52,3 +53,31 @@ GET http://localhost:4000/api/debug/supabase
 ```
 
 `/api/debug/supabase` no devuelve secretos: solo confirma el proyecto y cuenta filas en `Usuario`, `Comunidad`, `ComunidadUsuario`, `solicitudViaje` y `Viaje`.
+
+## Implementación de React Context (Trabajo práctico)
+
+Se implementó React Context para gestionar el estado compartido relacionado con los filtros deportivos en la sección de Reservas.
+
+- **Datos compartidos:** `sports` (lista de deportes), `selectedSport` (deporte seleccionado), y sus setters `setSports` y `setSelectedSport`.
+- **Ruta y archivo del Context:** `frontend/src/context/DeportesContext.jsx`.
+- **Provider (componente contenedor):** `DeportesProvider` — envuelve la aplicación en `frontend/src/main.jsx`.
+- **Componentes que consumen el Context (mediante `useContext` / `useDeportes`):**
+  - `frontend/src/components/deportes/SportFilter.jsx`
+  - `frontend/src/pages/deportes/Reservas.jsx`
+
+**Justificación técnica:**
+
+- Evita el prop-drilling entre componentes que necesitan conocer o modificar el deporte seleccionado (por ejemplo, pasar `selectedSport` desde páginas padre hasta filtros hijos).
+- Centraliza el estado del filtro deportivo de modo que múltiples pantallas o componentes puedan leer y actualizar la selección sin acoplamientos innecesarios.
+- El Context se integra funcionalmente: `Reservas.jsx` usa `selectedSport` para solicitar canchas (`getDeportes`) y `SportFilter.jsx` actualiza la selección; además `selectedSport` se envía al backend al confirmar una reserva si la cancha no define su deporte.
+
+**Notas de entrega (criterios del TP):**
+
+- El Context no es vacío ni artificial: contiene estado real usado por el flujo de reservas.
+- Archivo del Context: [frontend/src/context/DeportesContext.jsx](frontend/src/context/DeportesContext.jsx#L1-L200)
+- Provider ubicado en: [frontend/src/main.jsx](frontend/src/main.jsx#L1-L200)
+- Componentes consumidores: [frontend/src/components/deportes/SportFilter.jsx](frontend/src/components/deportes/SportFilter.jsx#L1-L200), [frontend/src/pages/deportes/Reservas.jsx](frontend/src/pages/deportes/Reservas.jsx#L1-L220)
+
+Si querés, puedo también migrar otras pantallas que actualmente mantienen su propio `selectedSport` local (por ejemplo `frontend/src/pages/deportes/FaltaJugador.jsx`) para que consuman el mismo Context y así unificar la experiencia global de filtros.
+
+````
