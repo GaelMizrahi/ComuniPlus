@@ -52,3 +52,15 @@ GET http://localhost:4000/api/debug/supabase
 ```
 
 `/api/debug/supabase` no devuelve secretos: solo confirma el proyecto y cuenta filas en `Usuario`, `Comunidad`, `ComunidadUsuario`, `solicitudViaje` y `Viaje`.
+
+## Mercado por comunidad
+
+Disponible desde Inicio y la navegación inferior, con publicaciones de productos y
+propiedades, una foto, filtros, detalle y WhatsApp, Mis publicaciones y Mis reservas.
+El backend valida la membresía de la comunidad seleccionada en el JWT en cada request.
+Las reservas y los cambios de disponibilidad se realizan mediante transacciones RPC.
+
+Antes de usarlo con datos reales, revisar y aplicar la migración sobre el Supabase
+existente y verificar permisos, administradores y Storage. Las instrucciones y pruebas
+están en [database/README.md](database/README.md); el esquema de diagnóstico compartido
+no se debe ejecutar como migración.

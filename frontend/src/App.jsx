@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
 import Deportes from './pages/deportes/Deportes.jsx';
 import MisReservas from './pages/deportes/MisReservas.jsx';
+import Mercado from './pages/Mercado.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const authHeaders = (token) => ({ Authorization: `Bearer ${token}` });
@@ -24,7 +25,7 @@ const BottomNav = ({ active }) => {
     { key: 'HOME', to: '/home' },
     { key: 'VIAJES', to: '/viajes' },
     { key: 'DEPORTES', to: '/deportes' },
-    { key: 'MERCADO', to: '#' },
+    { key: 'MERCADO', to: '/mercado' },
     { key: 'PERFIL', to: '#' }
   ];
 
@@ -104,7 +105,7 @@ function Home({ user, onLogout }) {
       <div className="grid2">
         <Link to="/deportes" className="mod sport">🏟️<span>Deportes</span></Link>
         <Link to="/viajes" className="mod transport">🚗<span>Transporte</span></Link>
-        <div className="mod">🛍️<span>Ventas</span></div>
+        <Link to="/mercado" className="mod">🛍️<span>Mercado</span></Link>
         <div className="mod">💬<span>Consultas</span></div>
       </div>
     </Layout>
@@ -330,6 +331,8 @@ export default function App() {
       <Route path="/reservas" element={<Protected user={user} token={token}><Reservas user={user} token={token} onLogout={onLogout} /></Protected>} />
       <Route path="/deportes" element={<Protected user={user} token={token}><Deportes user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
       <Route path="/deportes/mis-reservas" element={<Protected user={user} token={token}><MisReservas user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
+      <Route path="/mercado" element={<Protected user={user} token={token}><Mercado user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
+      <Route path="/mercado/productos/:productId" element={<Protected user={user} token={token}><Mercado user={user} token={token} onLogout={onLogout} Layout={Layout} /></Protected>} />
     </Routes>
   );
 }
