@@ -65,6 +65,7 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
     for (const path of ['/config','/productos','/productos/50','/mis-publicaciones','/mis-reservas']) assert.equal((await request(`/api/mercado${path}`)).status,401);
     const forged = await fetch(`http://127.0.0.1:${port}/api/mercado/productos`,{ headers:{ Authorization:'Bearer invalid' } });
     assert.equal(forged.status,401); assert.equal(records.length,before);
+    assert.equal((await request('/api/api/mercado/productos')).status,404);
     assert.ok(!output.includes(key)); assert.ok(!output.includes('local-stub-only'));
   });
   await t.test('membership mismatch or revocation rejects a correctly signed token', async () => {

@@ -58,7 +58,10 @@ await page.route('**/api/mercado/**', async (route) => {
 
 try {
   await seed('buyer');
-  await page.goto('http://127.0.0.1:5173/mercado');
+  await page.goto('http://127.0.0.1:5173/home');
+  await page.getByRole('heading', { name:'Hola, Usuario', exact:true }).waitFor();
+  await page.locator('a[href="/mercado"]').first().click();
+  assert.equal(new URL(page.url()).pathname,'/mercado');
   await page.getByRole('heading', { name:'Mesa de madera', exact:true }).waitFor();
   assert.equal(await page.locator('.market-card').count(),2);
   assert.ok(await page.getByText('Comunidad Prueba', { exact:true }).count());
@@ -133,4 +136,12 @@ try {
   assert.deepEqual(errors,[]);
   if (process.env.MARKET_SCREENSHOT) await page.screenshot({ path:process.env.MARKET_SCREENSHOT, fullPage:true });
   console.log('PASS URL inexistente, cierre de detalle, viewport móvil y ausencia de errores React');
+  const loggedOut = await browser.newPage();
+  for (const path of ['/mercado','/mercado/productos/1']) {
+    await loggedOut.goto(`http://127.0.0.1:5173${path}`);
+    await loggedOut.waitForURL('**/login');
+    await loggedOut.getByRole('button', { name:'Continuar', exact:true }).waitFor();
+  }
+  await loggedOut.close();
+  console.log('PASS navegación desde Inicio y rutas de Mercado protegidas sin sesión');
 } finally { await browser.close(); }
