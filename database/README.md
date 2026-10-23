@@ -1,5 +1,8 @@
 # Mercado en el Supabase existente
 
+Para el registro de usuarios y aprobación de acceso por administradores, consultar
+[REGISTRO.md](REGISTRO.md) y aplicar `registro_migration.sql`.
+
 ## Likes y publicaciones programadas
 
 Después de la migración inicial, ejecutar **`mercado_likes_visibilidad.sql`** y verificar

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import authRoutes from './auth.routes.js';
+import registrationRoutes from './registration.routes.js';
 import rideRoutes from './ride.routes.js';
 import reservationRoutes from './reservation.routes.js';
 import deporteRoutes from './deporte.routes.js';
@@ -53,6 +54,7 @@ router.get('/api/debug/supabase', async (_req, res) => {
 
 // Rutas de la API
 router.use('/api', authRoutes);
+router.use('/api', registrationRoutes);
 router.use('/api', rideRoutes);
 router.use('/api', reservationRoutes);
 router.use('/api', deporteRoutes);

@@ -56,6 +56,11 @@ GET http://localhost:4000/api/debug/supabase
 
 ## Mercado por comunidad
 
+El registro de cuentas con solicitud de acceso está disponible desde Login. Cada
+comunidad aprueba sus miembros desde Perfil → Solicitudes de acceso. Antes de usar
+el nuevo login y registro, aplicar [database/registro_migration.sql](database/registro_migration.sql)
+y seguir [las instrucciones de registro](database/REGISTRO.md).
+
 Disponible desde Inicio y la navegación inferior, con publicaciones de productos y
 propiedades, una foto, filtros, detalle y WhatsApp, Mis publicaciones y Mis likes.
 El backend valida la membresía de la comunidad seleccionada en el JWT en cada request.
