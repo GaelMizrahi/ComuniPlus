@@ -86,7 +86,9 @@ export async function findReservationForCourtDateTime({
     .maybeSingle();
 
   if (error) {
-    console.error('===== ERROR FIND RESERVATION FOR COURT DATE TIME =====');
+    console.error(
+      '===== ERROR FIND RESERVATION FOR COURT DATE TIME ====='
+    );
     console.error(error);
     throw error;
   }
@@ -114,9 +116,10 @@ export async function findUserReservations(communityUserId) {
     throw error;
   }
 
-  return data;
+  return data.filter(
+    (item) => item.Reserva && Number(item.Reserva.estado) !== 0
+  );
 }
-
 export async function findLinkedReservationById(
   reservationId,
   communityUserId
@@ -137,7 +140,9 @@ export async function findLinkedReservationById(
     .maybeSingle();
 
   if (error) {
-    console.error('===== ERROR FIND LINKED RESERVATION BY ID =====');
+    console.error(
+      '===== ERROR FIND LINKED RESERVATION BY ID ====='
+    );
     console.error(error);
     throw error;
   }

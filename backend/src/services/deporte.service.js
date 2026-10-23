@@ -42,20 +42,17 @@ const normalize = (value) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
+export const shapeCourt = (court) => ({
+  id: court.id,
+  name: court.nombre ?? court.numero,
+  location: court.ubicacion ?? court.lugar,
+  image: court.imagen,
+  pricePerHour: Number(court.precioPorHora ?? 0),
+  sport: court.deporte
+});
+
 export function getSports() {
   return SPORTS;
-}
-
-export function shapeCourt(court) {
-  return {
-    id: court.id,
-    name: `Cancha ${court.numero}`,
-    location: court.lugar,
-    sport: court.deporte,
-    capacity: court.cantidadMax,
-    image: null,
-    pricePerHour: 0
-  };
 }
 
 export async function getCourts(sport) {
@@ -63,10 +60,11 @@ export async function getCourts(sport) {
   const normalizedSport = normalize(sport);
 
   return courts
-    .filter((court) => {
-      if (!normalizedSport) return true;
-      return normalize(court.deporte) === normalizedSport;
-    })
+    .filter(
+      (court) =>
+        !normalizedSport ||
+        normalize(court.deporte) === normalizedSport
+    )
     .map(shapeCourt);
 }
 
@@ -97,7 +95,7 @@ export async function getCourtTimeSlots(courtId, date) {
     throw err;
   }
 
-  const court = await getCourt(courtId);
+  await getCourt(courtId);
 
   const reservations = await findReservationsByCourtAndDate(
     asNumber(courtId),
@@ -112,8 +110,6 @@ export async function getCourtTimeSlots(courtId, date) {
 
   return TIME_SLOTS.map((time) => ({
     time,
-    available: !occupied.has(time),
-    courtId: court.id,
-    sport: court.deporte
+    available: !occupied.has(time)
   }));
 }

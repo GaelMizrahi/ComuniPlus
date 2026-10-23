@@ -9,6 +9,7 @@ app.use('/api/mercado', express.json({ limit: '7mb' }));
 app.use(express.json());
 app.use(router);
 
+
 app.listen(port, () => {
   console.log(`Backend running on http://localhost:${port}`);
 });
