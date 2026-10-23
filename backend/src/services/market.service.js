@@ -31,7 +31,25 @@ export function validateImage(photo) {
   return { bytes, mimeType, extension: { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }[mimeType] };
 }
 
-export function createMarketService(repo) {
+export function isMarketVisible(row, now = Date.now()) {
+  return row.visible !== false && !row.eliminadoEn && Number(row.disponibilidad) !== 3 &&
+    (!row.publicarDesde || Date.parse(row.publicarDesde) <= now) &&
+    (!row.publicarHasta || Date.parse(row.publicarHasta) > now);
+}
+
+export function publicationDate(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string' || value.length > 40) fail(400, 'Fecha de publicación inválida');
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d{1,6})?)?(?:Z|[+-](?:0\d|1[0-4]):[0-5]\d)$/.exec(value);
+  if (!match) fail(400, 'Las fechas deben incluir fecha, hora y zona horaria');
+  const [, year, month, day] = match.map(Number);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > days[month - 1] || !Number.isFinite(Date.parse(value))) fail(400, 'Fecha de publicación inválida');
+  return new Date(value).toISOString();
+}
+
+export function createMarketService(repo, { now = () => Date.now() } = {}) {
   const authorize = async (claims) => {
     positiveId(claims?.idUsuario); positiveId(claims?.idComunidad); positiveId(claims?.idComunidadUsuario);
     const member = await repo.membership(claims);
@@ -42,17 +60,21 @@ export function createMarketService(repo) {
     const community = await repo.community(member.idComunidad);
     return { categories: CATEGORIES[community.tipo] ?? CATEGORIES.otro, isAdmin: await repo.isAdmin(member) };
   };
-  const shape = (row, member, admin = false) => {
+  const likedIds = async (member) => new Set((await repo.likes(member)).map((like) => Number(like.idProducto)));
+  const shape = (row, member, admin = false, likes = new Set()) => {
     const seller = row.vendedor?.usuario;
     const title = row.titulo;
     const owner = Number(row.idVendedor) === Number(member.id);
+    const published = isMarketVisible(row, now());
     return {
       id: row.id, title, description: row.descripcion, price: Number(row.precio), category: row.categoria,
       condition: Number(row.estado), type: row.tipo, availability: Number(row.disponibilidad),
       image: repo.imageUrl(row.fotoPath), createdAt: row.fechaDeAlta,
+      visible: row.visible ?? true, publishFrom: row.publicarDesde ?? null, publishUntil: row.publicarHasta ?? null,
+      isPublished: published, liked: likes.has(Number(row.id)), canLike: published,
       sellerName: getFullName(seller), sellerPhone: seller?.telefono ?? '',
       whatsappLink: buildWhatsAppLink(seller?.telefono, `Hola, vi tu publicación '${title}' en Comuni+ y estoy interesado/a.`),
-      isOwner: owner, canDelete: owner || admin, canReserve: !owner && Number(row.disponibilidad) === 1
+      isOwner: owner, canDelete: owner || admin
     };
   };
   const product = async (member, id) => {
@@ -75,8 +97,11 @@ export function createMarketService(repo) {
       const maximum = filters.maxPrice === undefined || filters.maxPrice === '' ? Infinity : Number(filters.maxPrice);
       if ((filters.maxPrice !== undefined && filters.maxPrice !== '' && !Number.isFinite(maximum)) || maximum < 0) fail(400, 'Precio máximo inválido');
       if (filters.condition && !['1', '2'].includes(String(filters.condition))) fail(400, 'Condición inválida');
-      const rows = await repo.list(member, mode);
-      return rows.map((row) => shape(row, member, isAdmin)).filter((row) =>
+      const rows = await repo.list(member, mode === 'mine' ? 'mine' : 'public');
+      const likes = await likedIds(member);
+      return rows.filter((row) => (mode === 'mine' || isMarketVisible(row, now())) &&
+        (mode !== 'likes' || likes.has(Number(row.id))))
+        .map((row) => shape(row, member, isAdmin, likes)).filter((row) =>
         (!search || `${row.title} ${row.description}`.toLocaleLowerCase('es').includes(search)) &&
         (!filters.category || row.category === filters.category) && row.price <= maximum &&
         (!filters.condition || row.condition === Number(filters.condition)));
@@ -84,16 +109,8 @@ export function createMarketService(repo) {
     detail: async (member, id) => {
       const row = await product(member, id);
       const admin = await repo.isAdmin(member);
-      if (Number(row.disponibilidad) === 3 && Number(row.idVendedor) !== Number(member.id) && !admin) fail(404, 'Publicación no encontrada');
-      return shape(row, member, admin);
-    },
-    reservations: async (member) => {
-      const reservations = await repo.reservations(member);
-      const items = await Promise.all(reservations.map(async (reservation) => {
-        const row = await repo.product(member, reservation.idProducto);
-        return row && Number(row.disponibilidad) === 2 ? { ...shape(row, member), reservationId: reservation.id } : null;
-      }));
-      return items.filter(Boolean);
+      if (!isMarketVisible(row, now()) && Number(row.idVendedor) !== Number(member.id)) fail(404, 'Publicación no encontrada');
+      return shape(row, member, admin, await likedIds(member));
     },
     save: async (member, id, body) => {
       if (!body || typeof body !== 'object' || Array.isArray(body)) fail(400, 'Publicación inválida');
@@ -109,6 +126,11 @@ export function createMarketService(repo) {
         titulo: text(body.title, 'Título', 120), descripcion: text(body.description, 'Descripción', 4000),
         categoria: text(body.category, 'Categoría', 80), precio: body.price, estado: Number(body.condition), tipo: body.type
       };
+      data.visible = body.visible === undefined ? previous?.visible ?? true : body.visible;
+      if (typeof data.visible !== 'boolean') fail(400, 'La visibilidad debe ser Visible u Oculta');
+      data.publicarDesde = publicationDate(body.publishFrom === undefined ? previous?.publicarDesde : body.publishFrom);
+      data.publicarHasta = publicationDate(body.publishUntil === undefined ? previous?.publicarHasta : body.publishUntil);
+      if (data.publicarDesde && data.publicarHasta && data.publicarDesde >= data.publicarHasta) fail(400, 'Hasta debe ser posterior a Desde');
       if ((typeof body.price !== 'number' && typeof body.price !== 'string') || String(body.price).trim() === '' ||
           !Number.isFinite(Number(body.price)) || Number(body.price) < 0 || Number(body.price) > 999999999999.99) fail(400, 'Precio inválido');
       data.precio = Number(body.price);
@@ -131,15 +153,15 @@ export function createMarketService(repo) {
       } catch (error) {
         // On a lost response the transaction may already have committed. Only
         // delete the upload when PostgreSQL explicitly rejected the mutation.
-        if (uploaded && /^(22|23|42|P0)/.test(error.code ?? '')) await cleanImage(uploaded, member);
+        if (uploaded && (/^(22|23|42|P0)/.test(error.code ?? '') || ['PGRST202','PGRST204'].includes(error.code))) await cleanImage(uploaded, member);
         throw error;
       }
     },
-    reserve: async (member, id) => {
-      const row = await product(member, id);
-      if (Number(row.idVendedor) === Number(member.id)) fail(409, 'No podés reservar tu propia publicación');
-      if (Number(row.disponibilidad) !== 1) fail(409, 'La publicación no está disponible');
-      return repo.reserve(member, row.id);
+    setLike: async (member, id, liked) => {
+      const parsedId = positiveId(id);
+      if (typeof liked !== 'boolean') fail(400, 'Indicá si querés poner o quitar el like');
+      if (liked && !isMarketVisible(await product(member, parsedId), now())) fail(404, 'Publicación no encontrada');
+      return repo.setLike(member, parsedId, liked);
     },
     manage: async (member, id, action) => {
       // Scoped read prevents revealing existence of a product in another community.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMarketService, validateImage, positiveId } from '../src/services/market.service.js';
+import { createMarketService, validateImage, positiveId, isMarketVisible, publicationDate } from '../src/services/market.service.js';
 import { createMarketRepository } from '../src/repositories/market.repository.js';
 
 const member = { id: 10, idUsuario: 1, idComunidad: 100, aceptado: true };
@@ -14,8 +14,8 @@ function fixture(overrides = {}) {
     membership: async (c) => JSON.stringify(c) === JSON.stringify(claims) ? member : null,
     community: async () => ({ tipo: 'otro' }), isAdmin: async () => false,
     product: async (m, id) => id === 50 && m.idComunidad === 100 ? row() : null,
-    list: async () => [row()], reservations: async () => [], imageUrl: (p) => `https://images.invalid/${p}`,
-    reserve: async (...args) => { calls.push(['reserve', ...args]); return { id: 1 }; },
+    list: async () => [row()], likes: async () => [], imageUrl: (p) => `https://images.invalid/${p}`,
+    setLike: async (...args) => { calls.push(['like', ...args]); return { liked: args[2] }; },
     manage: async (...args) => { calls.push(['manage', ...args]); return {}; },
     save: async (...args) => { calls.push(['save', ...args]); return { id: 51 }; },
     upload: async (...args) => calls.push(['upload', ...args]), removeImage: async (...args) => calls.push(['remove', ...args]),
@@ -36,9 +36,9 @@ test('membership must match user, selected community and membership; revoked mem
 test('rejects ambiguous or unsafe IDs instead of parseInt truncation', () => {
   for (const id of ['1x', '-1', '0', '1.5', '', '9007199254740993']) assert.throws(() => positiveId(id), denied(400));
 });
-test('cross-community detail, reservation, edits and deletes are hidden', async () => {
+test('cross-community detail, likes, edits and deletes are hidden', async () => {
   const { service, calls } = fixture({ product: async () => null });
-  for (const operation of [() => service.detail(member, 99), () => service.reserve(member, 99), () => service.save(member, 99, body), () => service.manage(member, 99, 'eliminar')]) await assert.rejects(operation(), denied(404));
+  for (const operation of [() => service.detail(member, 99), () => service.setLike(member, 99, true), () => service.save(member, 99, body), () => service.manage(member, 99, 'eliminar')]) await assert.rejects(operation(), denied(404));
   assert.equal(calls.length, 0);
 });
 test('only the owner can edit or mark sold; regular non-owner cannot delete', async () => {
@@ -55,10 +55,11 @@ test('same-community administrator can delete but cannot sell or edit others', a
   await assert.rejects(service.save(member, 50, body), denied(403));
   assert.equal(calls.filter((c) => c[0] === 'manage').length, 1);
 });
-test('self reservation, reserved and sold products never reach reserve RPC', async () => {
-  for (const values of [{ idVendedor: member.id }, { disponibilidad: 2 }, { disponibilidad: 3 }]) {
+test('hidden, future, expired and sold products cannot be liked or viewed by non-owners', async () => {
+  for (const values of [{ visible:false }, { publicarDesde:'2999-01-01T00:00:00Z' }, { publicarHasta:'2000-01-01T00:00:00Z' }, { disponibilidad:3 }]) {
     const { service, calls } = fixture({ product: async () => row(values) });
-    await assert.rejects(service.reserve(member, 50), denied(409));
+    await assert.rejects(service.setLike(member, 50, true), denied(404));
+    await assert.rejects(service.detail(member, 50), denied(404));
     assert.equal(calls.length, 0);
   }
 });
@@ -72,8 +73,8 @@ test('buyer and seller IDs come from session/RPC, not body', async () => {
   assert.equal(saved[3].idComunidad, undefined);
   assert.equal(saved[3].disponibilidad, undefined);
   assert.match(saved[3].fotoPath, /^100\/10\/[a-f0-9-]+\.png$/);
-  await service.reserve(member, 50);
-  assert.deepEqual(calls.at(-1), ['reserve', member, 50]);
+  await service.setLike(member, 50, true);
+  assert.deepEqual(calls.at(-1), ['like', member, 50, true]);
 });
 test('required fields, finite nonnegative price, condition/type/category and single image validated', async () => {
   for (const changes of [{ title: ' ' }, { description: '' }, { price: -1 }, { price: '' }, { price: null }, { price: Infinity }, { price: 1.234 }, { category: '' }, { condition: 3 }, { condition: true }, { type: 'global' }, { photo: undefined }, { photo: [png, png] }]) {
@@ -91,7 +92,7 @@ test('image size, base64, MIME and file signature checked', () => {
   for (const photo of [{ ...png, data: 'AAAA' }, { ...png, data: '?' }, { ...png, mimeType: 'text/html' }, { ...png, data: 'A'.repeat(7_000_000) }, { mimeType: 'image/jpeg', data: png.data }]) assert.throws(() => validateImage(photo), denied(400));
 });
 test('definite database rejection cleans upload, ambiguous network failure keeps it', async () => {
-  for (const [code, cleanup] of [['23514', true], [undefined, false]]) {
+  for (const [code, cleanup] of [['23514', true], ['PGRST202', true], [undefined, false]]) {
     const { service, calls } = fixture({ save: async () => { throw Object.assign(new Error('failed'), { code }); } });
     await assert.rejects(service.save(member, null, body));
     assert.equal(calls.some((c) => c[0] === 'remove'), cleanup);
@@ -117,11 +118,14 @@ test('search, category, maximum and condition filters apply together; WhatsApp e
   assert.equal((await service.list(member, 'public', { maxPrice: '0' })).length, 0);
   await assert.rejects(service.list(member, 'public', { maxPrice: 'Infinity' }), denied(400));
 });
-test('sold details hidden except for owner/admin; reservations exclude missing and no-longer-reserved products', async () => {
+test('owners retain private details; Mis likes excludes hidden, future and sold products', async () => {
   await assert.rejects(fixture({ product: async () => row({ disponibilidad: 3 }) }).service.detail(member, 50), denied(404));
   assert.equal((await fixture({ product: async () => row({ disponibilidad: 3, idVendedor: member.id }) }).service.detail(member, 50)).availability, 3);
-  const { service } = fixture({ reservations: async () => [{ id: 1, idProducto: 50 }, { id: 2, idProducto: 51 }], product: async (_m, id) => id === 50 ? row({ disponibilidad: 2 }) : null });
-  assert.equal((await service.reservations(member)).length, 1);
+  const { service } = fixture({ likes: async () => [{ idProducto:50 },{ idProducto:51 },{ idProducto:52 },{ idProducto:53 }], list: async () => [row(),row({ id:51,visible:false }),row({ id:52,publicarDesde:'2999-01-01T00:00:00Z' }),row({ id:53,disponibilidad:3 }),row({ id:54 })] });
+  const likes = await service.list(member, 'likes');
+  assert.deepEqual(likes.map((item) => item.id),[50]);
+  assert.equal(likes[0].liked,true);
+  assert.equal((await service.list(member, 'mine')).length,5);
 });
 test('repository constrains membership and every product read by selected community', async () => {
   const calls = [];
@@ -136,7 +140,55 @@ test('repository constrains membership and every product read by selected commun
     assert.ok(calls.some((c) => c[0] === 'eq' && c[1] === 'vendedor.aceptado' && c[2] === true));
     assert.ok(calls.some((c) => c[0] === 'is' && c[1] === 'eliminadoEn' && c[2] === null));
   }
-  calls.length = 0; await repo.reservations(member);
-  assert.ok(calls.some((c) => c[0] === 'eq' && c[1] === 'idComprador' && c[2] === 10));
-  assert.ok(calls.some((c) => c[0] === 'eq' && c[1] === 'idComunidad' && c[2] === 100));
+  calls.length = 0; await repo.likes(member);
+  assert.ok(calls.some((c) => c[0] === 'from' && c[1] === 'ProductoLike'));
+  assert.ok(calls.some((c) => c[0] === 'eq' && c[1] === 'idComunidadUsuario' && c[2] === 10));
+  calls.length=0; await repo.list(member,'public');
+  assert.ok(calls.some((c) => c[0]==='eq' && c[1]==='visible' && c[2]===true));
+  assert.equal(calls.filter((c) => c[0]==='or').length,2);
+});
+
+test('effective visibility supports all optional-date combinations and exact boundaries', () => {
+  const now=Date.parse('2026-10-23T15:00:00Z');
+  const cases=[
+    [{},true], [{visible:false},false],
+    [{publicarDesde:'2026-10-23T15:00:00Z'},true],
+    [{publicarDesde:'2026-10-23T15:00:00.001Z'},false],
+    [{publicarHasta:'2026-10-23T15:00:00Z'},false],
+    [{publicarHasta:'2026-10-23T15:00:00.001Z'},true],
+    [{publicarDesde:'2026-10-23T14:00:00Z',publicarHasta:'2026-10-23T16:00:00Z'},true],
+    [{visible:false,publicarDesde:'2026-10-23T14:00:00Z',publicarHasta:'2026-10-23T16:00:00Z'},false]
+  ];
+  for(const [changes,expected] of cases) assert.equal(isMarketVisible(row(changes),now),expected);
+});
+test('schedule dates are optional, validated and converted from timezone offsets to UTC', async () => {
+  assert.equal(publicationDate('2026-10-23T12:00:00-03:00'),'2026-10-23T15:00:00.000Z');
+  assert.equal(publicationDate('2026-10-23T12:00:00.123456-03:00'),'2026-10-23T15:00:00.123Z');
+  assert.equal(publicationDate(''),null); assert.equal(publicationDate(null),null);
+  for(const value of ['2026-02-30T12:00:00Z','2026-13-01T12:00:00Z','2026-10-23T25:00:00Z','2026-10-23T12:00',true]) assert.throws(()=>publicationDate(value),denied(400));
+  for(const changes of [{visible:'false'},{publishFrom:'2026-10-24T12:00:00Z',publishUntil:'2026-10-23T12:00:00Z'},{publishFrom:'2026-10-24T12:00:00Z',publishUntil:'2026-10-24T12:00:00Z'}]) {
+    const {service,calls}=fixture();
+    await assert.rejects(service.save(member,null,{...body,...changes}),denied(400)); assert.equal(calls.length,0);
+  }
+  for(const dates of [{publishFrom:null,publishUntil:null},{publishFrom:'2026-10-23T12:00:00-03:00'},{publishUntil:'2026-10-23T12:00:00-03:00'}]) {
+    const {service,calls}=fixture(); await service.save(member,null,{...body,visible:false,...dates});
+    const data=calls.find((c)=>c[0]==='save')[3]; assert.equal(data.visible,false);
+  }
+});
+test('likes can be removed idempotently after hiding; body must supply an explicit boolean', async () => {
+  const {service,calls}=fixture({product:async()=>null});
+  assert.deepEqual(await service.setLike(member,50,false),{liked:false});
+  assert.deepEqual(calls.at(-1),['like',member,50,false]);
+  await assert.rejects(service.setLike(member,50,'false'),denied(400));
+});
+test('editing without schedule fields preserves them, while null clears either bound', async () => {
+  const previous=row({idVendedor:member.id,visible:false,publicarDesde:'2026-10-23T15:00:00Z',publicarHasta:'2026-10-24T15:00:00Z'});
+  const {service,calls}=fixture({product:async()=>previous});
+  const {photo,...edit}=body;
+  await service.save(member,50,edit);
+  let data=calls.find((c)=>c[0]==='save')[3];
+  assert.equal(data.visible,false); assert.equal(data.publicarDesde,'2026-10-23T15:00:00.000Z');
+  calls.length=0;
+  await service.save(member,50,{...edit,publishFrom:null,publishUntil:null});
+  data=calls.find((c)=>c[0]==='save')[3]; assert.equal(data.publicarDesde,null); assert.equal(data.publicarHasta,null);
 });

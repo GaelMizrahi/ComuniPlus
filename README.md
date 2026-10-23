@@ -57,9 +57,11 @@ GET http://localhost:4000/api/debug/supabase
 ## Mercado por comunidad
 
 Disponible desde Inicio y la navegación inferior, con publicaciones de productos y
-propiedades, una foto, filtros, detalle y WhatsApp, Mis publicaciones y Mis reservas.
+propiedades, una foto, filtros, detalle y WhatsApp, Mis publicaciones y Mis likes.
 El backend valida la membresía de la comunidad seleccionada en el JWT en cada request.
-Las reservas y los cambios de disponibilidad se realizan mediante transacciones RPC.
+Los likes se pueden poner y quitar. Las publicaciones pueden guardarse ocultas o
+mostrarse con fechas y horas Desde/Hasta, ambas opcionales. El backend aplica la
+visibilidad en cada consulta, detalle y like. Los cambios usan RPC con validación de membresía.
 
 Antes de usarlo con datos reales, revisar y aplicar la migración sobre el Supabase
 existente y verificar permisos, administradores y Storage. Las instrucciones y pruebas

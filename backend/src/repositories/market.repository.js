@@ -22,7 +22,12 @@ export function createMarketRepository(db) {
     list: async (member, mode) => {
       let query = scoped(member.idComunidad).order('fechaDeAlta', { ascending: false }).order('id', { ascending: false });
       if (mode === 'mine') query = query.eq('idVendedor', member.id);
-      else query = query.neq('disponibilidad', 3);
+      else {
+        const now = new Date().toISOString();
+        query = query.neq('disponibilidad', 3).eq('visible', true)
+          .or(`publicarDesde.is.null,publicarDesde.lte.${now}`)
+          .or(`publicarHasta.is.null,publicarHasta.gt.${now}`);
+      }
       // Fetch every page before applying title/description filters in the service.
       const rows = [];
       for (let offset = 0; ; offset += 500) {
@@ -32,12 +37,13 @@ export function createMarketRepository(db) {
       }
     },
     product: (member, id) => result(scoped(member.idComunidad).eq('id', id).maybeSingle()),
-    reservations: (member) => result(db.from('Venta').select('id, idProducto, fecha, estado')
-      .eq('idComprador', member.id).eq('idComunidad', member.idComunidad).eq('estado', 1).order('id', { ascending: false })),
+    likes: (member) => result(db.from('ProductoLike').select('idProducto').eq('idComunidadUsuario', member.id)),
     save: (member, id, data) => result(db.rpc('guardarProductoMercado', {
       p_id_producto: id, p_id_actor: member.id, p_datos: data
     })),
-    reserve: (member, id) => result(db.rpc('reservarProductoMercado', { p_id_producto: id, p_id_comprador: member.id })),
+    setLike: (member, id, liked) => result(db.rpc('marcarLikeProductoMercado', {
+      p_id_producto: id, p_id_actor: member.id, p_like: liked
+    })),
     manage: (member, id, action) => result(db.rpc('gestionarProductoMercado', {
       p_id_producto: id, p_id_actor: member.id, p_accion: action
     })),

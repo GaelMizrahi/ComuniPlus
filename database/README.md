@@ -1,11 +1,60 @@
 # Mercado en el Supabase existente
 
+## Likes y publicaciones programadas
+
+Después de la migración inicial, ejecutar **`mercado_likes_visibilidad.sql`** y verificar
+con **`mercado_likes_preflight.sql`**: todos sus resultados deben ser `true`.
+Si ya aplicaste `mercado_migration.sql`, solo necesitás esta migración incremental.
+Para una base nueva, el orden es `mercado_migration.sql` y luego
+`mercado_likes_visibilidad.sql`; repetir la migración inicial después requiere volver
+a aplicar la incremental, porque ambas definen la RPC de guardado.
+
+La actualización agrega `Producto.visible`, `publicarDesde`, `publicarHasta` y la tabla
+`ProductoLike`. Conserva las publicaciones y el historial de Venta; las publicaciones
+existentes quedan visibles sin fechas. La API reemplaza reservar/Mis reservas por
+likes/Mis likes y deshabilita nuevas reservas sin borrar las antiguas.
+El like usa PUT con un booleano explícito y una clave única por publicación/membresía;
+repetir la misma petición no duplica ni invierte el estado. No crea Venta ni reserva.
+
+Ambas fechas son opcionales, en la hora local del navegador y almacenadas como
+`timestamptz` en UTC:
+
+- Sin fechas: visible hasta que el vendedor la oculte o marque vendida.
+- Solo Desde: aparece desde ese instante, sin vencimiento.
+- Solo Hasta: aparece ahora y se oculta al llegar ese instante.
+- Ambas: intervalo desde inclusive hasta exclusivo. Hasta debe ser posterior a Desde.
+- Oculta: prevalece sobre las fechas y conserva todo en Mis publicaciones.
+
+No se necesita cron: el backend aplica estas condiciones en cada consulta y RPC.
+La pantalla se actualiza al volver a la pestaña, en los límites conocidos y como máximo
+cada 30 segundos mientras está activa y no hay un formulario abierto. El servidor
+rechaza inmediatamente un like fuera del período aunque la pantalla esté desactualizada.
+Ocultas, futuras, vencidas, eliminadas y vendidas no se muestran en Mercado ni Mis likes,
+ni en el detalle de otro usuario. El vendedor conserva el acceso a su publicación.
+Los likes se conservan si se oculta una publicación y reaparecen cuando vuelve a ser
+visible; cada miembro solo puede consultar o quitar los suyos dentro de su sesión.
+
+Pruebas adicionales de migración, permisos y fechas (PostgreSQL aislado):
+
+```bash
+PGLITE_MODULE=/tmp/mercado-test-tools/node_modules/@electric-sql/pglite/dist/index.js node --test database/mercado_likes.test.mjs
+```
+
+Las instrucciones siguientes describen la migración inicial y su compatibilidad histórica.
+
 La aplicación usa el JWT propio del backend y nunca consulta Supabase desde React.
 La comunidad se toma de la sesión firmada y se comprueba de nuevo en `ComunidadUsuario`
 por `id`, `idUsuario`, `idComunidad` y `aceptado` en cada request de Mercado.
 No se agrega `Producto.idComunidad`, no se reutiliza `Reserva` y no se recrean tablas.
 
 ## Aplicar y comprobar
+
+Si cargar Mercado o publicar devuelve 500, eso no significa que falten productos.
+Un mercado vacío responde 200 con una lista vacía. Primero ejecutar
+`mercado_preflight.sql` en el SQL Editor: todas las columnas de su resultado deben
+ser `true`. Si falta la columna, alguna RPC o el bucket, seguir los pasos siguientes.
+El backend distingue esos casos con `MARKET_SCHEMA_NOT_READY` o
+`MARKET_STORAGE_NOT_READY`; una clave sin acceso produce `MARKET_CREDENTIALS_INVALID`.
 
 1. Revisar el esquema actual y hacer el respaldo habitual de la base.
 2. Ejecutar `mercado_migration.sql` en el SQL editor del proyecto existente, como
