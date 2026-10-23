@@ -3,6 +3,8 @@ import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import './App.css';
 import Deportes from './pages/deportes/Deportes.jsx';
 import MisReservas from './pages/deportes/MisReservas.jsx';
+import Registro from './pages/deportes/Registro.jsx';
+
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 const authHeaders = (token) => ({ Authorization: `Bearer ${token}` });
@@ -34,6 +36,7 @@ const BottomNav = ({ active }) => {
         {items.map((item) => item.to === '#'
           ? <span key={item.key} className={active === item.key ? 'active' : ''}>{item.key}</span>
           : <Link key={item.key} to={item.to} className={active === item.key ? 'active' : ''}>{item.key}</Link>)}
+          
       </nav>
     </footer>
   );
@@ -86,6 +89,9 @@ function Login({ onLogin }) {
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="field" required />
           <button className="btn blue full">Iniciar sesión</button>
           {error && <p className="error">{error}</p>}
+          <p className="registro-link">
+  ¿No tenés cuenta? <Link to="/registro">Registrate acá</Link>
+</p>
         </form>
       </section>
     </main>
@@ -324,6 +330,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Login onLogin={onLogin} />} />
+      <Route path="/registro" element={<Registro />} />
       <Route path="/home" element={<Protected user={user} token={token}><Home user={user} onLogout={onLogout} /></Protected>} />
       <Route path="/viajes" element={<Protected user={user} token={token}><Viajes user={user} token={token} onLogout={onLogout} /></Protected>} />
       <Route path="/viajes/solicitar" element={<Protected user={user} token={token}><Solicitar user={user} token={token} onLogout={onLogout} /></Protected>} />

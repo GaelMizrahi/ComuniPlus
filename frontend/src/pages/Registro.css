@@ -1,0 +1,96 @@
+
+.registro-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 16px;
+  background: #f5f7fa;
+  font-family: Arial, sans-serif;
+}
+
+.registro-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 36px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.06);
+}
+
+.registro-card h1 {
+  margin: 0 0 8px;
+  color: #172033;
+  font-size: 28px;
+}
+
+.registro-card > p {
+  color: #667085;
+  margin-bottom: 28px;
+}
+
+.registro-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.registro-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.registro-grid .registro-full {
+  grid-column: 1 / -1;
+}
+
+.registro-grid input,
+.registro-grid select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  background: white;
+  font-size: 15px;
+}
+
+.registro-card button {
+  width: 100%;
+  margin-top: 24px;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  background: #3478f6;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.registro-error {
+  color: #b42318;
+}
+
+.registro-exito {
+  color: #067647;
+}
+
+@media (max-width: 480px) {
+  .registro-card {
+    padding: 24px;
+  }
+
+  .registro-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registro-grid .registro-full {
+    grid-column: auto;
+  }
+}

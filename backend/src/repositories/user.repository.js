@@ -71,3 +71,66 @@ export async function countRows(table) {
     ? { table, ok: false, error: mapSupabaseError(error) }
     : { table, ok: true, count };
 }
+
+
+
+export async function createUser({
+  nombre,
+  apellido,
+  email,
+  password,
+  telefono
+}) {
+  const { data, error } = await supabase
+    .from('Usuario')
+    .insert({
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
+      mail: email.trim().toLowerCase(),
+      contraseña: password,
+      telefono: telefono.trim()
+    })
+    .select('id, nombre, apellido, mail, telefono')
+    .single();
+
+  if (error) {
+    if (error.code === '23505') {
+      const err = new Error('Ese email ya está registrado');
+      err.statusCode = 409;
+      throw err;
+    }
+    throw error;
+  }
+
+  return data;
+}
+
+export async function createMembership({
+  idUsuario,
+  idComunidad,
+  nroSocio
+}) {
+  const { data, error } = await supabase
+    .from('ComunidadUsuario')
+    .insert({
+      idUsuario,
+      idComunidad,
+      nroSocio: nroSocio || null,
+      aceptado: false
+    })
+    .select('id, idUsuario, idComunidad, nroSocio, aceptado')
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+export async function updateUserPassword(userId, hashedPassword) {
+  const { error } = await supabase
+    .from('Usuario')
+    .update({ contraseña: hashedPassword })
+    .eq('id', userId);
+
+  if (error) throw error;
+}
