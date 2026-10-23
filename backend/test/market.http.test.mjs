@@ -17,6 +17,7 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
   const jwt = require('jsonwebtoken');
   const key = randomBytes(32).toString('hex');
   const records = [];
+  const likes = new Map();
   let productMode = 'normal';
   let storageMode = 'normal';
   let rpcMode = 'normal';
@@ -36,8 +37,20 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
       const requested = url.searchParams.get('id');
       data = requested && requested !== `eq.${id}` ? [] : [{ id, titulo:`Publicación ${community}`, descripcion:'Prueba', precio:0, categoria:'Otros', estado:2, tipo:'producto', disponibilidad:1,idVendedor:20,
         vendedor:{ usuario:{ nombre:'Vendedor',apellido:'Prueba',telefono:'5491100000000' } } }];
+      if (['hidden','future','expired'].includes(productMode)) for(const row of data) {
+        if(productMode==='hidden') row.visible=false;
+        if(productMode==='future') row.publicarDesde='2999-01-01T00:00:00Z';
+        if(productMode==='expired') row.publicarHasta='2000-01-01T00:00:00Z';
+      }
       if (productMode === 'empty') data = [];
       if (productMode === 'missing-column') { status=400; data={ code:'42703',message:'column Producto.eliminadoEn does not exist' }; }
+    } else if(url.pathname.endsWith('/ProductoLike')) {
+      const actor=Number(url.searchParams.get('idComunidadUsuario')?.replace('eq.',''));
+      data=[...(likes.get(actor)??[])].map((idProducto)=>({idProducto}));
+    } else if(url.pathname.endsWith('/rpc/marcarLikeProductoMercado')) {
+      const args=JSON.parse(bytes); const own=likes.get(args.p_id_actor)??new Set();
+      if(args.p_like) own.add(args.p_id_producto); else own.delete(args.p_id_producto);
+      likes.set(args.p_id_actor,own); data={liked:args.p_like};
     } else if (url.pathname.includes('/storage/v1/object/')) {
       data = { Key:'mercado/test.png' };
       if (storageMode === 'missing-bucket') { status=404; data={ statusCode:'404',error:'Bucket not found',message:'Bucket not found' }; }
@@ -72,7 +85,7 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
   await t.test('server starts, health works, and absent/invalid JWT cannot reach Supabase', async () => {
     assert.equal((await (await request('/health')).json()).ok,true);
     const before = records.length;
-    for (const path of ['/config','/productos','/productos/50','/mis-publicaciones','/mis-reservas']) assert.equal((await request(`/api/mercado${path}`)).status,401);
+    for (const path of ['/config','/productos','/productos/50','/mis-publicaciones','/mis-likes']) assert.equal((await request(`/api/mercado${path}`)).status,401);
     const forged = await fetch(`http://127.0.0.1:${port}/api/mercado/productos`,{ headers:{ Authorization:'Bearer invalid' } });
     assert.equal(forged.status,401); assert.equal(records.length,before);
     assert.equal((await request('/api/api/mercado/productos')).status,404);
@@ -93,6 +106,7 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
   await t.test('creation uploads one image and RPC receives session actor, excluding body ownership', async () => {
     const response = await request('/api/mercado/productos',claims,'POST',{
       title:'Publicación de prueba',description:'Prueba',price:0,category:'Otros',condition:2,type:'producto',idVendedor:999,idComunidad:999,
+      visible:false,publishFrom:'2026-10-23T12:00:00-03:00',publishUntil:null,
       photo:{ mimeType:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1kAAAAASUVORK5CYII=' }
     });
     assert.equal(response.status,200); assert.equal((await response.json()).id,102);
@@ -100,6 +114,35 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
     assert.equal(rpc.p_id_actor,10); assert.equal(rpc.p_id_producto,null);
     assert.equal(rpc.p_datos.idComunidad,undefined); assert.equal(rpc.p_datos.idVendedor,undefined);
     assert.match(rpc.p_datos.fotoPath,/^100\/10\//);
+    assert.equal(rpc.p_datos.visible,false); assert.equal(rpc.p_datos.publicarDesde,'2026-10-23T15:00:00.000Z'); assert.equal(rpc.p_datos.publicarHasta,null);
+  });
+  await t.test('like/unlike and Mis likes use session actor and never create a reservation',async()=>{
+    for(let i=0;i<2;i++) {
+      const response=await request('/api/mercado/productos/50/like',claims,'PUT',{liked:true,idComunidadUsuario:999});
+      assert.equal(response.status,200); assert.deepEqual(await response.json(),{liked:true});
+    }
+    assert.equal(likes.get(10).size,1);
+    const mine=await request('/api/mercado/mis-likes',claims);
+    assert.equal(mine.headers.get('cache-control'),'no-store');
+    assert.equal((await mine.json())[0].liked,true);
+    const other=await request('/api/mercado/mis-likes',{...claims,idComunidad:200,idComunidadUsuario:11});
+    assert.deepEqual(await other.json(),[]);
+    assert.equal((await request('/api/mercado/productos/50/like',claims,'PUT',{liked:'false'})).status,400);
+    assert.equal((await request('/api/mercado/productos/50/like',claims,'PUT',{liked:false})).status,200);
+    assert.deepEqual(await(await request('/api/mercado/mis-likes',claims)).json(),[]);
+    assert.equal((await request('/api/mercado/productos/50/reservar',claims,'POST')).status,404);
+    assert.equal((await request('/api/mercado/mis-reservas',claims)).status,404);
+    assert.ok(!records.some((r)=>r.path.endsWith('/rpc/reservarProductoMercado')));
+  });
+  await t.test('private publication windows cannot be bypassed through detail or like URLs',async()=>{
+    for(const mode of ['hidden','future','expired']) {
+      productMode=mode;
+      try {
+        assert.deepEqual(await(await request('/api/mercado/productos',claims)).json(),[]);
+        assert.equal((await request('/api/mercado/productos/50',claims)).status,404);
+        assert.equal((await request('/api/mercado/productos/50/like',claims,'PUT',{liked:true})).status,404);
+      } finally { productMode='normal'; }
+    }
   });
   await t.test('empty Mercado is a successful empty list, not an internal server error', async () => {
     productMode='empty';

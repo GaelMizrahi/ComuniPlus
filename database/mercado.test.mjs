@@ -8,27 +8,7 @@ const { PGlite } = await import(process.env.PGLITE_MODULE || '@electric-sql/pgli
 test('Mercado migration and transactional authorization on an isolated PostgreSQL engine', async (t) => {
   const db = new PGlite();
   t.after(() => db.close());
-  await db.exec(`
-    CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
-    CREATE SCHEMA storage;
-    CREATE TABLE storage.buckets (id text PRIMARY KEY, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
-    CREATE TABLE storage.objects (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, bucket_id text, name text);
-    ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-    GRANT USAGE ON SCHEMA storage TO anon, authenticated;
-    GRANT ALL ON storage.objects TO anon, authenticated;
-    GRANT USAGE ON SEQUENCE storage.objects_id_seq TO anon, authenticated;
-    CREATE POLICY existing_broad_policy ON storage.objects FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-    CREATE TABLE public."Comunidad" (id bigint PRIMARY KEY, nombre text NOT NULL);
-    CREATE TABLE public."Usuario" (id bigint PRIMARY KEY);
-    CREATE TABLE public."ComunidadUsuario" (id bigint PRIMARY KEY, "idComunidad" bigint NOT NULL REFERENCES public."Comunidad", "idUsuario" bigint NOT NULL REFERENCES public."Usuario", aceptado boolean NOT NULL);
-    CREATE TABLE public."Administrador" (id bigint PRIMARY KEY, "idComunidad" bigint NOT NULL REFERENCES public."Comunidad");
-    CREATE TABLE public."Producto" (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, titulo text NOT NULL, descripcion text NOT NULL, precio bigint NOT NULL CHECK(precio>=0), foto bigint, categoria text NOT NULL, "idVendedor" bigint NOT NULL REFERENCES public."ComunidadUsuario");
-    CREATE TABLE public."Venta" (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, fecha date NOT NULL, "idComprador" bigint NOT NULL REFERENCES public."ComunidadUsuario", "idVendedor" bigint NOT NULL REFERENCES public."ComunidadUsuario", "idProducto" bigint NOT NULL REFERENCES public."Producto", "idComunidad" bigint NOT NULL REFERENCES public."Comunidad", estado bigint);
-    GRANT ALL ON ALL TABLES IN SCHEMA public TO PUBLIC, anon, authenticated;
-    INSERT INTO public."Comunidad" VALUES (1,'Comunidad A'),(2,'Comunidad B');
-    INSERT INTO public."Usuario" VALUES (1),(2),(3),(4),(5);
-    INSERT INTO public."ComunidadUsuario" VALUES (10,1,1,true),(20,1,2,true),(30,1,3,true),(40,2,4,true),(50,1,5,false),(60,2,2,true),(70,1,1,true);
-  `);
+  await db.exec(await readFile(new URL('./test-fixtures/mercado_base.sql', import.meta.url), 'utf8'));
   const migration = await readFile(new URL('./mercado_migration.sql', import.meta.url), 'utf8');
   const preflight = await readFile(new URL('./mercado_preflight.sql', import.meta.url), 'utf8');
   const before = (await db.query(preflight)).rows[0];

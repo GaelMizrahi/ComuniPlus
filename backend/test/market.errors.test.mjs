@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { marketErrorResponse } from '../src/controllers/market.controller.js';
 
 test('missing columns, relations and RPCs identify the required database migration', () => {
-  for (const code of ['42703','42P01','PGRST200','PGRST202','PGRST204']) {
+  for (const code of ['42703','42P01','PGRST200','PGRST202','PGRST204','PGRST205']) {
     const result = marketErrorResponse({ code, message:'internal details must not be exposed' });
     assert.equal(result.status,503);
     assert.equal(result.code,'MARKET_SCHEMA_NOT_READY');

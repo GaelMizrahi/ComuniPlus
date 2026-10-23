@@ -1,6 +1,6 @@
 export function marketErrorResponse(error) {
-  if (['42703', '42P01', 'PGRST200', 'PGRST202', 'PGRST204'].includes(error.code)) {
-    return { status: 503, code: 'MARKET_SCHEMA_NOT_READY', message: 'La base de Mercado no está actualizada. Ejecutá database/mercado_migration.sql en el SQL Editor de Supabase y recargá la página.' };
+  if (['42703', '42P01', 'PGRST200', 'PGRST202', 'PGRST204', 'PGRST205'].includes(error.code)) {
+    return { status: 503, code: 'MARKET_SCHEMA_NOT_READY', message: 'La base de Mercado no está actualizada. Ejecutá database/mercado_migration.sql y después database/mercado_likes_visibilidad.sql en el SQL Editor de Supabase.' };
   }
   const storageError = error.name === 'StorageApiError';
   if (storageError && /bucket.*not found|bucket.*does not exist/i.test(error.message ?? '')) {
@@ -13,7 +13,7 @@ export function marketErrorResponse(error) {
   const status = (Number.isInteger(explicit) && explicit >= 400 && explicit < 500 && !storageError ? explicit : undefined)
     ?? ({ P0002: 404, '42501': 403, '23505': 409, '23514': 400, P0001: 409, '22023': 400 }[error.code]) ?? 500;
   const message = status >= 500 ? 'No se pudo completar la operación de Mercado.'
-    : error.code === '23505' ? 'La publicación ya tiene una reserva activa.'
+    : error.code === '23505' ? 'La operación entra en conflicto con un registro existente.'
     : error.code === '23514' ? 'La publicación contiene datos inválidos. Revisá los campos ingresados.'
     : error.message;
   return { status, code: status >= 500 ? 'MARKET_UPSTREAM_ERROR' : 'MARKET_REQUEST_REJECTED', message };

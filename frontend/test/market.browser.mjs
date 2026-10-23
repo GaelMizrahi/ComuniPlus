@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage'] });
-const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 }, timezoneId: 'America/Argentina/Buenos_Aires' });
 const errors = [];
 const routerWarnings = [];
 page.on('pageerror', (error) => errors.push(error.message));
@@ -11,6 +11,9 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 const image = `data:image/png;base64,${png.toString('base64')}`;
 let nextId = 3;
 let writes = 0;
+const edits = [];
+const published = (r) => r.visible !== false && r.availability !== 3 &&
+  (!r.publishFrom || Date.parse(r.publishFrom) <= Date.now()) && (!r.publishUntil || Date.parse(r.publishUntil) > Date.now());
 let rows = [
   { id: 1, title: 'Mesa de madera', description: 'Mesa grande para el hogar', price: 150, category: 'Hogar', condition: 2, type: 'producto', availability: 1, image, sellerName: 'Vendedor Prueba', sellerPhone: '5491100000000', whatsappLink: 'https://wa.me/5491100000000?text=Hola', owner: 'seller', reservedBy: null },
   { id: 2, title: 'Libro escolar', description: 'Libro nuevo', price: 30, category: 'Libros', condition: 1, type: 'producto', availability: 1, image, sellerName: 'Comprador Prueba', sellerPhone: '5491100000001', whatsappLink: null, owner: 'buyer', reservedBy: null }
@@ -25,14 +28,14 @@ await page.route('**/api/mercado/**', async (route) => {
   const req = route.request(); const url = new URL(req.url()); const role = req.headers().authorization?.slice(7);
   const path = url.pathname.replace('/api/mercado','');
   const method = req.method();
-  const shape = (row) => ({ ...row, isOwner: row.owner === role, canDelete: row.owner === role, canReserve: row.owner !== role && row.availability === 1 });
+  const shape = (row) => ({ ...row, visible:row.visible??true, liked:row.likes?.has(role)??false, isPublished:published(row), canLike:published(row), isOwner: row.owner === role, canDelete: row.owner === role });
   let status = 200, data;
   if (method === 'OPTIONS') data = {};
   else if (path === '/config') data = { categories: ['Hogar','Libros','Propiedades','Otros'], isAdmin: false };
   else if (path === '/mis-publicaciones') data = rows.filter((r) => r.owner === role).map(shape);
-  else if (path === '/mis-reservas') data = rows.filter((r) => r.reservedBy === role && r.availability === 2).map(shape);
+  else if (path === '/mis-likes') data = rows.filter((r) => r.likes?.has(role) && published(r)).map(shape);
   else if (path === '/productos' && method === 'GET') {
-    data = rows.filter((r) => r.availability !== 3 &&
+    data = rows.filter((r) => published(r) &&
       (!url.searchParams.get('q') || `${r.title} ${r.description}`.toLowerCase().includes(url.searchParams.get('q').toLowerCase())) &&
       (!url.searchParams.get('category') || r.category === url.searchParams.get('category')) &&
       (!url.searchParams.get('condition') || r.condition === Number(url.searchParams.get('condition'))) &&
@@ -42,16 +45,23 @@ await page.route('**/api/mercado/**', async (route) => {
     await new Promise((resolve) => setTimeout(resolve,150));
     const body = req.postDataJSON();
     assert.equal(Array.isArray(body.photo),false); assert.equal(body.photo.mimeType,'image/png');
+    assert.equal(body.visible,true); assert.equal(body.publishFrom,null); assert.equal(body.publishUntil,null);
     rows.unshift({ ...body, id: nextId++, availability: 1, image, sellerName: 'Usuario Prueba', owner: role });
     data = { id: rows[0].id };
   } else {
     const [, id, action] = path.match(/^\/productos\/(\d+)(?:\/(.*))?$/) || [];
     const row = rows.find((r) => r.id === Number(id));
     if (!row) { status = 404; data = { message: 'Publicación no encontrada' }; }
-    else if (method === 'GET') data = shape(row);
-    else if (action === 'reservar') { row.availability = 2; row.reservedBy = role; data = { id: 100 }; }
+    else if (method === 'GET') {
+      if(!published(row)&&row.owner!==role) {status=404;data={message:'Publicación no encontrada'};}
+      else data = shape(row);
+    }
+    else if (action === 'like') {
+      const {liked}=req.postDataJSON(); row.likes??=new Set();
+      if(liked) row.likes.add(role); else row.likes.delete(role); data={liked};
+    }
     else if (action === 'vendido') { row.availability = 3; data = { ok: true }; }
-    else if (method === 'PUT') { Object.assign(row,req.postDataJSON()); data = { id: row.id }; }
+    else if (method === 'PUT') { const body=req.postDataJSON(); edits.push(body); Object.assign(row,body); data = { id: row.id }; }
     else if (method === 'DELETE') { rows = rows.filter((r) => r !== row); data = { ok: true }; }
     else { status = 400; data = { message: 'Request inesperado' }; }
   }
@@ -83,14 +93,23 @@ try {
   await page.getByRole('heading', { name:'Mesa de madera', exact:true }).click();
   await page.getByRole('dialog').getByRole('link', { name:'Contactar por WhatsApp' }).waitFor();
   assert.match(await page.getByRole('link', { name:'Contactar por WhatsApp' }).getAttribute('href'),/^https:\/\/wa.me\//);
-  await page.getByRole('button', { name:'Reservar', exact:true }).click();
-  await page.getByRole('dialog').getByText('Reservado', { exact:true }).waitFor();
+  await page.getByRole('dialog').getByRole('button', { name:'Dar like a Mesa de madera', exact:true }).click();
+  await page.getByRole('dialog').getByRole('button', { name:'Quitar like a Mesa de madera', exact:true }).waitFor();
+  await page.getByRole('dialog').getByText('Disponible', { exact:true }).waitFor();
   assert.equal(await page.getByRole('button', { name:'Reservar', exact:true }).count(),0);
   await page.getByRole('button', { name:'Cerrar', exact:true }).click();
-  await page.getByRole('button', { name:'Mis reservas', exact:true }).click();
+  await page.getByRole('button', { name:'Mis likes', exact:true }).click();
   await page.getByRole('heading', { name:'Mesa de madera', exact:true }).waitFor();
   assert.equal(await page.locator('.market-card').count(),1);
-  console.log('PASS búsqueda, filtros, detalle, WhatsApp, reserva y Mis reservas');
+  await page.getByRole('button',{name:'Quitar like a Mesa de madera',exact:true}).click();
+  await page.getByText('Todavía no marcaste publicaciones con like en esta comunidad.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Mercado',exact:true}).click();
+  await page.getByRole('button',{name:'Dar like a Mesa de madera',exact:true}).click();
+  await page.getByRole('button',{name:'Quitar like a Mesa de madera',exact:true}).waitFor();
+  await page.reload();
+  await page.getByRole('button',{name:'Quitar like a Mesa de madera',exact:true}).waitFor();
+  assert.equal(rows[0].availability,1);
+  console.log('PASS búsqueda, filtros, detalle, WhatsApp, poner/quitar likes, Mis likes y persistencia');
 
   await page.getByRole('button', { name:'+ Publicar', exact:true }).click();
   const editor = page.getByRole('dialog');
@@ -114,6 +133,39 @@ try {
   await page.getByRole('button', { name:'Guardar cambios', exact:true }).click();
   await page.getByRole('heading', { name:'Casa actualizada', exact:true }).waitFor();
   const updated = page.locator('.market-card').filter({ has:page.getByRole('heading', { name:'Casa actualizada', exact:true }) });
+  const schedule = async (visible, from, until, clear=false) => {
+    await updated.getByRole('button',{name:'Editar',exact:true}).click();
+    const dialog=page.getByRole('dialog');
+    await dialog.getByLabel('Visibilidad',{exact:true}).selectOption(String(visible));
+    await dialog.getByLabel('Desde (opcional)',{exact:true}).fill(from);
+    await dialog.getByLabel('Hasta (opcional)',{exact:true}).fill(until);
+    if(clear) await dialog.getByRole('button',{name:'Limpiar fechas',exact:true}).click();
+    await dialog.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+    await dialog.waitFor({state:'detached'}); await updated.waitFor();
+  };
+  await schedule(false,'','');
+  await updated.getByText('Oculta',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Mercado',exact:true}).click();
+  await page.getByRole('heading',{name:'Libro escolar',exact:true}).waitFor();
+  assert.equal(await page.getByRole('heading',{name:'Casa actualizada',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Mis publicaciones',exact:true}).click();
+  await updated.waitFor();
+  await schedule(true,'2050-01-01T12:30','');
+  await updated.getByText('Programada',{exact:true}).waitFor();
+  assert.equal(edits.at(-1).publishFrom,'2050-01-01T15:30:00.000Z');
+  assert.equal(edits.at(-1).publishUntil,null);
+  await schedule(true,'','2051-01-01T12:30');
+  await updated.getByText('Visible',{exact:true}).waitFor();
+  assert.equal(edits.at(-1).publishFrom,null);
+  assert.equal(edits.at(-1).publishUntil,'2051-01-01T15:30:00.000Z');
+  await schedule(true,'2050-01-01T12:30','2051-01-01T12:30');
+  await updated.getByText('Programada',{exact:true}).waitFor();
+  await schedule(false,'2050-01-01T12:30','2051-01-01T12:30');
+  await updated.getByText('Oculta',{exact:true}).waitFor();
+  await schedule(true,'2050-01-01T12:30','2051-01-01T12:30',true);
+  await updated.getByText('Visible',{exact:true}).waitFor();
+  assert.equal(edits.at(-1).publishFrom,null); assert.equal(edits.at(-1).publishUntil,null);
+  console.log('PASS fechas opcionales, solo Desde, solo Hasta, ambas, ocultar y limpiar; hora Argentina convertida a UTC');
   page.once('dialog', (dialog) => dialog.accept());
   await updated.getByRole('button', { name:'Vendido', exact:true }).click();
   await updated.getByText('Vendido', { exact:true }).first().waitFor();
@@ -138,6 +190,16 @@ try {
   assert.deepEqual(errors,[]);
   if (process.env.MARKET_SCREENSHOT) await page.screenshot({ path:process.env.MARKET_SCREENSHOT, fullPage:true });
   console.log('PASS URL inexistente, cierre de detalle, viewport móvil y ausencia de errores React');
+  rows=[rows.find((row)=>row.id===1)];
+  rows[0].publishUntil=new Date(Date.now()+4000).toISOString();
+  await page.goto('http://127.0.0.1:5173/mercado');
+  await page.getByRole('heading',{name:'Mesa de madera',exact:true}).waitFor();
+  await page.getByText('No encontramos publicaciones. Probá otros filtros o creá la primera.',{exact:true}).waitFor({timeout:10000});
+  assert.ok(rows[0].likes.has('buyer'));
+  rows[0].publishUntil=null;
+  await page.reload();
+  await page.getByRole('button',{name:'Quitar like a Mesa de madera',exact:true}).waitFor();
+  console.log('PASS vencimiento automático en pantalla y conservación del like al republicar');
   rows=[];
   await page.goto('http://127.0.0.1:5173/mercado');
   await page.getByText('No encontramos publicaciones. Probá otros filtros o creá la primera.',{ exact:true }).waitFor();
