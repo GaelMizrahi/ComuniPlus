@@ -91,7 +91,7 @@ test('image size, base64, MIME and file signature checked', () => {
   for (const photo of [{ ...png, data: 'AAAA' }, { ...png, data: '?' }, { ...png, mimeType: 'text/html' }, { ...png, data: 'A'.repeat(7_000_000) }, { mimeType: 'image/jpeg', data: png.data }]) assert.throws(() => validateImage(photo), denied(400));
 });
 test('definite database rejection cleans upload, ambiguous network failure keeps it', async () => {
-  for (const [code, cleanup] of [['23514', true], [undefined, false]]) {
+  for (const [code, cleanup] of [['23514', true], ['PGRST202', true], [undefined, false]]) {
     const { service, calls } = fixture({ save: async () => { throw Object.assign(new Error('failed'), { code }); } });
     await assert.rejects(service.save(member, null, body));
     assert.equal(calls.some((c) => c[0] === 'remove'), cleanup);

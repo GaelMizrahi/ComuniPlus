@@ -7,6 +7,13 @@ No se agrega `Producto.idComunidad`, no se reutiliza `Reserva` y no se recrean t
 
 ## Aplicar y comprobar
 
+Si cargar Mercado o publicar devuelve 500, eso no significa que falten productos.
+Un mercado vacío responde 200 con una lista vacía. Primero ejecutar
+`mercado_preflight.sql` en el SQL Editor: todas las columnas de su resultado deben
+ser `true`. Si falta la columna, alguna RPC o el bucket, seguir los pasos siguientes.
+El backend distingue esos casos con `MARKET_SCHEMA_NOT_READY` o
+`MARKET_STORAGE_NOT_READY`; una clave sin acceso produce `MARKET_CREDENTIALS_INVALID`.
+
 1. Revisar el esquema actual y hacer el respaldo habitual de la base.
 2. Ejecutar `mercado_migration.sql` en el SQL editor del proyecto existente, como
    propietario. La transacción se puede repetir; cualquier dato anterior incompatible

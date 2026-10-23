@@ -30,8 +30,15 @@ test('Mercado migration and transactional authorization on an isolated PostgreSQ
     INSERT INTO public."ComunidadUsuario" VALUES (10,1,1,true),(20,1,2,true),(30,1,3,true),(40,2,4,true),(50,1,5,false),(60,2,2,true),(70,1,1,true);
   `);
   const migration = await readFile(new URL('./mercado_migration.sql', import.meta.url), 'utf8');
+  const preflight = await readFile(new URL('./mercado_preflight.sql', import.meta.url), 'utf8');
+  const before = (await db.query(preflight)).rows[0];
+  assert.ok(Object.values(before).every((value) => value === false));
   await db.exec(migration);
   await db.exec(migration); // same migration can safely be reapplied
+  await t.test('read-only preflight detects missing setup and confirms all prerequisites after migration', async () => {
+    const after = (await db.query(preflight)).rows[0];
+    assert.ok(Object.values(after).every((value) => value === true));
+  });
   const call = async (name, params) => (await db.query(`SELECT public."${name}"(${params.map((_, i) => '$' + (i + 1)).join(',')}) AS result`, params)).rows[0].result;
   const save = (actor = 10, changes = {}, id = null) => call('guardarProductoMercado', [id, actor, {
     titulo: 'Mesa', descripcion: 'Madera', precio: 10.50, categoria: 'Hogar', estado: 2, tipo: 'producto', fotoPath: `1/${actor}/image.png`, ...changes

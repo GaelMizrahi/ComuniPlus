@@ -17,13 +17,16 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
   const jwt = require('jsonwebtoken');
   const key = randomBytes(32).toString('hex');
   const records = [];
+  let productMode = 'normal';
+  let storageMode = 'normal';
+  let rpcMode = 'normal';
   const members = [{ id:10,idUsuario:1,idComunidad:100,aceptado:true }, { id:11,idUsuario:1,idComunidad:200,aceptado:true }];
   const stub = createServer(async (req, res) => {
     const url = new URL(req.url,'http://stub');
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const bytes = Buffer.concat(chunks);
     records.push({ path:url.pathname, query:url.searchParams, body:bytes, type:req.headers['content-type'] });
-    let data = [];
+    let data = [], status = 200;
     if (url.pathname.endsWith('/ComunidadUsuario')) {
       data = members.filter((m) => Object.entries(m).every(([k,v]) => url.searchParams.get(k) === `eq.${v}`));
     } else if (url.pathname.endsWith('/Comunidad')) data = { id:100,tipo:'otro' };
@@ -33,9 +36,16 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
       const requested = url.searchParams.get('id');
       data = requested && requested !== `eq.${id}` ? [] : [{ id, titulo:`Publicación ${community}`, descripcion:'Prueba', precio:0, categoria:'Otros', estado:2, tipo:'producto', disponibilidad:1,idVendedor:20,
         vendedor:{ usuario:{ nombre:'Vendedor',apellido:'Prueba',telefono:'5491100000000' } } }];
-    } else if (url.pathname.includes('/storage/v1/object/')) data = { Key:'mercado/test.png' };
-    else if (url.pathname.endsWith('/rpc/guardarProductoMercado')) data = { id:102,previousPhoto:null };
-    res.writeHead(200, { 'Content-Type':'application/json' }); res.end(JSON.stringify(data));
+      if (productMode === 'empty') data = [];
+      if (productMode === 'missing-column') { status=400; data={ code:'42703',message:'column Producto.eliminadoEn does not exist' }; }
+    } else if (url.pathname.includes('/storage/v1/object/')) {
+      data = { Key:'mercado/test.png' };
+      if (storageMode === 'missing-bucket') { status=404; data={ statusCode:'404',error:'Bucket not found',message:'Bucket not found' }; }
+    } else if (url.pathname.endsWith('/rpc/guardarProductoMercado')) {
+      data = { id:102,previousPhoto:null };
+      if (rpcMode === 'missing-function') { status=404; data={ code:'PGRST202',message:'Could not find the function public.guardarProductoMercado in the schema cache' }; }
+    }
+    res.writeHead(status, { 'Content-Type':'application/json' }); res.end(JSON.stringify(data));
   });
   await new Promise((resolve) => stub.listen(0,'127.0.0.1',resolve));
   t.after(() => new Promise((resolve) => stub.close(resolve)));
@@ -90,5 +100,35 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
     assert.equal(rpc.p_id_actor,10); assert.equal(rpc.p_id_producto,null);
     assert.equal(rpc.p_datos.idComunidad,undefined); assert.equal(rpc.p_datos.idVendedor,undefined);
     assert.match(rpc.p_datos.fotoPath,/^100\/10\//);
+  });
+  await t.test('empty Mercado is a successful empty list, not an internal server error', async () => {
+    productMode='empty';
+    try {
+      const response=await request('/api/mercado/productos',claims);
+      assert.equal(response.status,200); assert.deepEqual(await response.json(),[]);
+    } finally { productMode='normal'; }
+  });
+  await t.test('missing migration gives an actionable response when loading the market', async () => {
+    productMode='missing-column';
+    try {
+      const response=await request('/api/mercado/productos',claims);
+      assert.equal(response.status,503);
+      const data=await response.json();
+      assert.equal(data.code,'MARKET_SCHEMA_NOT_READY'); assert.match(data.message,/mercado_migration\.sql/);
+    } finally { productMode='normal'; }
+  });
+  await t.test('photo bucket and creation RPC failures identify the missing setup', async () => {
+    const body={ title:'Prueba',description:'Prueba',price:0,category:'Otros',condition:2,type:'producto',photo:{ mimeType:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1kAAAAASUVORK5CYII=' } };
+    storageMode='missing-bucket';
+    try {
+      const response=await request('/api/mercado/productos',claims,'POST',body);
+      assert.equal(response.status,503); assert.equal((await response.json()).code,'MARKET_STORAGE_NOT_READY');
+    } finally { storageMode='normal'; }
+    rpcMode='missing-function';
+    try {
+      const response=await request('/api/mercado/productos',claims,'POST',body);
+      assert.equal(response.status,503); assert.equal((await response.json()).code,'MARKET_SCHEMA_NOT_READY');
+      assert.ok(records.some((r) => r.path.endsWith('/storage/v1/object/mercado') && r.type?.includes('application/json')));
+    } finally { rpcMode='normal'; }
   });
 });

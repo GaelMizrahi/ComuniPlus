@@ -4,7 +4,9 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const errors = [];
+const routerWarnings = [];
 page.on('pageerror', (error) => errors.push(error.message));
+page.on('console', (message) => { if (message.text().includes('React Router Future Flag Warning')) routerWarnings.push(message.text()); });
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1kAAAAASUVORK5CYII=', 'base64');
 const image = `data:image/png;base64,${png.toString('base64')}`;
 let nextId = 3;
@@ -136,6 +138,14 @@ try {
   assert.deepEqual(errors,[]);
   if (process.env.MARKET_SCREENSHOT) await page.screenshot({ path:process.env.MARKET_SCREENSHOT, fullPage:true });
   console.log('PASS URL inexistente, cierre de detalle, viewport móvil y ausencia de errores React');
+  rows=[];
+  await page.goto('http://127.0.0.1:5173/mercado');
+  await page.getByText('No encontramos publicaciones. Probá otros filtros o creá la primera.',{ exact:true }).waitFor();
+  assert.equal(await page.getByRole('alert').count(),0);
+  const icon=await page.request.get('http://127.0.0.1:5173/favicon.svg');
+  assert.equal(icon.status(),200); assert.match(await icon.text(),/<svg/);
+  assert.deepEqual(routerWarnings,[]);
+  console.log('PASS Mercado vacío sin error, favicon disponible y React Router sin avisos de migración');
   const loggedOut = await browser.newPage();
   for (const path of ['/mercado','/mercado/productos/1']) {
     await loggedOut.goto(`http://127.0.0.1:5173${path}`);

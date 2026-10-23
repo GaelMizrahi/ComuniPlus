@@ -131,7 +131,7 @@ export function createMarketService(repo) {
       } catch (error) {
         // On a lost response the transaction may already have committed. Only
         // delete the upload when PostgreSQL explicitly rejected the mutation.
-        if (uploaded && /^(22|23|42|P0)/.test(error.code ?? '')) await cleanImage(uploaded, member);
+        if (uploaded && (/^(22|23|42|P0)/.test(error.code ?? '') || ['PGRST202','PGRST204'].includes(error.code))) await cleanImage(uploaded, member);
         throw error;
       }
     },
