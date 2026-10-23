@@ -45,17 +45,6 @@ if (!supabaseUrl || !supabaseServiceKey || !jwtSecret) {
   );
 }
 
-if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === undefined) {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
-
-console.log('SUPABASE_URL:', supabaseUrl);
-console.log('SERVICE KEY START:', supabaseServiceKey.slice(0, 25));
-console.log('JWT_SECRET EXISTS:', Boolean(jwtSecret));
-
-console.log('SUPABASE_URL:', supabaseUrl);
-console.log('SERVICE ROLE START:', supabaseServiceKey.slice(0, 30));
-
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     persistSession: false,

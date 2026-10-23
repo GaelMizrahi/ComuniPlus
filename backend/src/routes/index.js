@@ -5,6 +5,7 @@ import rideRoutes from './ride.routes.js';
 import reservationRoutes from './reservation.routes.js';
 import deporteRoutes from './deporte.routes.js';
 import reservaRoutes from './reserva.routes.js';
+import marketRoutes from './market.routes.js';
 import faltaJugadorRoutes from './faltaJugador.routes.js';
 import partidoRoutes from './partido.routes.js';
 
@@ -58,5 +59,6 @@ router.use('/api', deporteRoutes);
 router.use('/api', reservaRoutes);
 router.use('/api', faltaJugadorRoutes);
 router.use('/api', partidoRoutes);
+router.use('/api', marketRoutes);
 
 export default router;
