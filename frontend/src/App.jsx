@@ -4,6 +4,8 @@ import './App.css';
 
 // Páginas principales
 import Login from './pages/Login.jsx';
+import Registro from './pages/Registro.jsx';
+import SolicitudesAcceso from './pages/SolicitudesAcceso.jsx';
 import Home from './pages/Home.jsx';
 import Viajes from './pages/Viajes.jsx';
 import Solicitar from './pages/Solicitar.jsx';
@@ -93,6 +95,8 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/registro" element={user && token ? <Navigate to="/home" replace /> : <Registro />} />
+      <Route path="/solicitudes-acceso" element={<Protected user={user} token={token}><SolicitudesAcceso user={user} token={token} onLogout={onLogout}/></Protected>} />
 
       {/* ================================================================
           LOGIN

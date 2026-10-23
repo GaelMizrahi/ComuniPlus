@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
@@ -18,7 +18,7 @@ export default function Login({ onLogin }) {
       const res = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await res.json();
       if (!res.ok) return setError(data.message || 'Credenciales inválidas');
@@ -43,8 +43,10 @@ export default function Login({ onLogin }) {
 
         <form onSubmit={submit} className="flex flex-col gap-0">
           <div className="mb-1">
-            <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted mb-2 block">Email</label>
+            <label htmlFor="login-email" className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted mb-2 block">Email</label>
             <input
+              id="login-email"
+              autoComplete="username"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -54,8 +56,10 @@ export default function Login({ onLogin }) {
             />
           </div>
           <div className="mt-5">
-            <label className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted mb-2 block">Contraseña</label>
+            <label htmlFor="login-password" className="text-[11px] font-bold uppercase tracking-[0.1em] text-text-muted mb-2 block">Contraseña</label>
             <input
+              id="login-password"
+              autoComplete="current-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -89,6 +93,7 @@ export default function Login({ onLogin }) {
             ) : 'Continuar'}
           </button>
         </form>
+        <p className="text-sm text-center mt-6">¿No tenés cuenta? <Link to="/registro" className="text-accent font-bold">Crear cuenta</Link></p>
       </div>
     </div>
   );

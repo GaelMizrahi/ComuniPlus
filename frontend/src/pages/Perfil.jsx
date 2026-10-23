@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import Avatar from '../components/ui/Avatar.jsx';
+import { registrationRequest } from '../services/registrationApi.js';
 import Layout from '../components/layout/Layout.jsx';
 import ElevatedCard from '../components/ui/ElevatedCard.jsx';
 
@@ -38,13 +41,22 @@ const menuIcons = {
   ),
 };
 
-export default function Perfil({ user, onLogout }) {
+export default function Perfil({ user, token, onLogout }) {
+  const [isAdmin,setIsAdmin]=useState(false);
+  const [permissionError,setPermissionError]=useState('');
+  useEffect(()=>{
+    const abort=new AbortController();
+    registrationRequest('/solicitudes-acceso/permisos',{token,signal:abort.signal}).then((data)=>{setIsAdmin(data.isAdmin);setPermissionError('');}).catch((e)=>{
+      if(e.name!=='AbortError'){setIsAdmin(false);setPermissionError(e.message);if(e.status===401)onLogout();}
+    });
+    return()=>abort.abort();
+  },[token]);
   return (
     <Layout user={user} onLogout={onLogout} active="PERFIL">
       <div className="flex flex-col items-center text-center mb-10 animate-fade-in">
-        <img
+        <Avatar
           src={user.foto}
-          alt={user.fullName}
+          name={user.fullName}
           className="w-20 h-20 rounded-full object-cover ring-4 ring-accent/10 mb-4"
         />
 
@@ -62,6 +74,8 @@ export default function Perfil({ user, onLogout }) {
       </div>
 
       <div className="flex flex-col gap-2 mb-8">
+        {permissionError && <p role="alert" className="error text-sm">{permissionError}</p>}
+        {isAdmin && <Link to="/solicitudes-acceso" className="bg-surface rounded-2xl p-4 shadow-butter mb-2"><strong>Solicitudes de acceso</strong><p className="text-sm text-text-muted mt-1">Aprobar o rechazar miembros de {user.community}</p></Link>}
         {menuItems.map((item, i) => (
           <ElevatedCard
             key={item.label}

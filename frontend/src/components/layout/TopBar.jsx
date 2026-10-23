@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Avatar from '../ui/Avatar.jsx';
 
 export default function TopBar({ user }) {
   return (
@@ -14,9 +15,9 @@ export default function TopBar({ user }) {
             {user.fullName}
           </span>
 
-          <img
+          <Avatar
             src={user.foto}
-            alt={user.fullName}
+            name={user.fullName}
             className="w-8 h-8 rounded-full object-cover ring-2 ring-surface"
           />
         </div>
