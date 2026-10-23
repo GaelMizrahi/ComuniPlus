@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { marketRequest } from '../services/marketApi.js';
+import Layout from '../components/layout/Layout.jsx';
 import './Mercado.css';
 
 const money = (price) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(price);
@@ -74,7 +75,7 @@ function Editor({ item, categories, save, close, busy }) {
   </Modal>;
 }
 
-export default function Mercado({ user, token, onLogout, Layout }) {
+export default function Mercado({ user, token, onLogout }) {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [tab, setTab] = useState('public');
