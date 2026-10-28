@@ -26,6 +26,7 @@ router.get('/health', (_req, res) => {
 });
 
 router.get('/api/debug/supabase', async (_req, res) => {
+  if (process.env.NODE_ENV === 'production') return res.status(404).json({ message: 'Ruta no encontrada' });
   try {
     const tables = await Promise.all(
       [

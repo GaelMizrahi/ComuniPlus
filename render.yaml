@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: comuniplus-demo
+    runtime: node
+    plan: free
+    branch: UXUAI.V2
+    autoDeploy: false
+    buildCommand: npm ci --prefix backend && npm ci --prefix frontend --include=dev && npm run build --prefix frontend
+    startCommand: npm start --prefix backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

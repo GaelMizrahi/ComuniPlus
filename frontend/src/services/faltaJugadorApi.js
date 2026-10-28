@@ -1,6 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-const authHeaders = (token) => ({ Authorization: `Bearer ${token}` });
-const jsonHeaders = (token) => ({ 'Content-Type': 'application/json', ...authHeaders(token) });
+import { apiFetch } from './api.js';
+const jsonHeaders = () => ({ 'Content-Type': 'application/json' });
 
 async function parseResponse(response) {
   const data = await response.json().catch(() => ({}));
@@ -12,16 +11,16 @@ async function parseResponse(response) {
   return data;
 }
 
-export async function getPartidosFaltaJugador(token, deporte) {
+export async function getPartidosFaltaJugador(deporte) {
   const query = deporte && deporte !== 'Todos' ? `?deporte=${encodeURIComponent(deporte)}` : '';
-  const response = await fetch(`${API_URL}/api/falta-jugador/partidos${query}`, { headers: authHeaders(token) });
+  const response = await apiFetch(`/api/falta-jugador/partidos${query}`, {});
   return parseResponse(response);
 }
 
-export async function unirseAPartido(token, partidoId) {
-  const response = await fetch(`${API_URL}/api/falta-jugador/partidos/${partidoId}/unirse`, {
+export async function unirseAPartido(partidoId) {
+  const response = await apiFetch(`/api/falta-jugador/partidos/${partidoId}/unirse`, {
     method: 'POST',
-    headers: jsonHeaders(token)
+    headers: jsonHeaders()
   });
   return parseResponse(response);
 }

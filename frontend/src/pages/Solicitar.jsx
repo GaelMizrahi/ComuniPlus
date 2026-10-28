@@ -1,15 +1,15 @@
+import { apiFetch } from '../services/api.js';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout.jsx';
 import SectionHeader from '../components/ui/SectionHeader.jsx';
 import Toast from '../components/ui/Toast.jsx';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-const jsonHeaders = (t) => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${t}` });
+const jsonHeaders = (t) => ({ 'Content-Type': 'application/json' });
 
 const inputClass = "w-full py-3 px-4 bg-surface border border-border rounded-2xl text-[15px] font-medium text-text outline-none transition-all duration-200 placeholder:text-text-muted/40 focus:border-accent focus:shadow-input";
 
-export default function Solicitar({ user, token, onLogout }) {
+export default function Solicitar({ user, onLogout }) {
   const nav = useNavigate();
   const today = new Date().toLocaleDateString('en-CA');
   const [toast, setToast] = useState(null);
@@ -23,7 +23,7 @@ export default function Solicitar({ user, token, onLogout }) {
     if (form.seatsNeeded < 1 || form.seatsNeeded > 4) return setToast({ message: 'Lugares: 1 a 4', type: 'error' });
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/rides/request`, { method: 'POST', headers: jsonHeaders(token), body: JSON.stringify(form) });
+      const res = await apiFetch(`/api/rides/request`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(form) });
       if (res.status === 401) return onLogout();
       const data = await res.json();
       if (!res.ok) return setToast({ message: data.message || 'Error', type: 'error' });

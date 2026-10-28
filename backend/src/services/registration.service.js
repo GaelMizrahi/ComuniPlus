@@ -104,3 +104,22 @@ export function createLoginService(repo, { signToken, hash = hashPassword, verif
     };
   };
 }
+
+export function createSessionService(repo) {
+  return async (claims) => {
+    const member = await repo.membership(claims);
+    if (!member) fail(401, 'Tu membresía no está activa. Volvé a ingresar.');
+    const [user, memberships, community] = await Promise.all([
+      repo.userById(claims.idUsuario), repo.memberships(claims.idUsuario), repo.community(member.idComunidad)
+    ]);
+    const membership = memberships.find((row) => row.id === member.id && row.aceptado && !row.rechazado);
+    if (!user || !membership || !community) fail(401, 'Tu sesión ya no está disponible. Volvé a ingresar.');
+    return {
+      id: user.id, idUsuario: user.id, nombre: user.nombre, apellido: user.apellido,
+      mail: user.mail, email: user.mail, telefono: user.telefono, fullName: getFullName(user),
+      idComunidad: membership.idComunidad, communityId: membership.idComunidad, community: community.nombre,
+      idComunidadUsuario: membership.id, comunidadUsuarioId: membership.id, nroSocio: membership.nroSocio,
+      foto: membership.foto ?? null, isAdmin: await repo.isAdmin(membership)
+    };
+  };
+}

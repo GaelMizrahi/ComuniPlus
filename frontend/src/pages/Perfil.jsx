@@ -41,16 +41,16 @@ const menuIcons = {
   ),
 };
 
-export default function Perfil({ user, token, onLogout }) {
+export default function Perfil({ user, onLogout }) {
   const [isAdmin,setIsAdmin]=useState(false);
   const [permissionError,setPermissionError]=useState('');
   useEffect(()=>{
     const abort=new AbortController();
-    registrationRequest('/solicitudes-acceso/permisos',{token,signal:abort.signal}).then((data)=>{setIsAdmin(data.isAdmin);setPermissionError('');}).catch((e)=>{
+    registrationRequest('/solicitudes-acceso/permisos',{signal:abort.signal}).then((data)=>{setIsAdmin(data.isAdmin);setPermissionError('');}).catch((e)=>{
       if(e.name!=='AbortError'){setIsAdmin(false);setPermissionError(e.message);if(e.status===401)onLogout();}
     });
     return()=>abort.abort();
-  },[token]);
+  },[]);
   return (
     <Layout user={user} onLogout={onLogout} active="PERFIL">
       <div className="flex flex-col items-center text-center mb-10 animate-fade-in">

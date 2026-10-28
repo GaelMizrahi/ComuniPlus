@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/api.js';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout.jsx';
@@ -8,17 +9,14 @@ import RouteBox from '../components/ui/RouteBox.jsx';
 import Toast from '../components/ui/Toast.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-const authHeaders = (t) => ({ Authorization: `Bearer ${t}` });
-
-export default function Reservas({ user, token, onLogout }) {
+export default function Reservas({ user, onLogout }) {
   const nav = useNavigate();
   const [items, setItems] = useState([]);
   const [toast, setToast] = useState(null);
 
   const load = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/reservations`, { headers: authHeaders(token) });
+      const res = await apiFetch(`/api/reservations`, {});
       if (res.status === 401) return onLogout();
       const data = await res.json();
       setItems(Array.isArray(data) ? data : []);
@@ -28,14 +26,14 @@ export default function Reservas({ user, token, onLogout }) {
   useEffect(() => { load(); }, []);
 
   const cancel = async (id) => {
-    const res = await fetch(`${API_URL}/api/reservations/${id}/cancel`, { method: 'POST', headers: authHeaders(token) });
+    const res = await apiFetch(`/api/reservations/${id}/cancel`, { method: 'POST' });
     if (res.status === 401) return onLogout();
     setToast({ message: 'Reserva cancelada', type: 'success' });
     load();
   };
 
   const complete = async (id) => {
-    const res = await fetch(`${API_URL}/api/reservations/${id}/complete`, { method: 'POST', headers: authHeaders(token) });
+    const res = await apiFetch(`/api/reservations/${id}/complete`, { method: 'POST' });
     if (res.status === 401) return onLogout();
     setToast({ message: 'Viaje completado', type: 'success' });
     load();

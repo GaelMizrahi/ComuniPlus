@@ -112,7 +112,7 @@ function Editor({ item, categories, save, close, busy }) {
   </Modal>;
 }
 
-export default function Mercado({ user, token, onLogout }) {
+export default function Mercado({ user, onLogout }) {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [tab, setTab] = useState('public');
@@ -133,33 +133,33 @@ export default function Mercado({ user, token, onLogout }) {
 
   useEffect(() => {
     const abort = new AbortController();
-    marketRequest(token, '/config', { signal: abort.signal }).then((data) => { setConfig(data); setConfigError(''); }).catch((err) => {
+    marketRequest('/config', { signal: abort.signal }).then((data) => { setConfig(data); setConfigError(''); }).catch((err) => {
       if (err.name !== 'AbortError') { setConfigError(err.message); if (err.status === 401) onLogout(); }
     });
     return () => abort.abort();
-  }, [token, revision]);
+  }, [revision]);
 
   useEffect(() => {
     const abort = new AbortController();
     setLoading(true); setError(''); setItems([]);
     const timer = setTimeout(async () => {
       const path = tab === 'mine' ? '/mis-publicaciones' : tab === 'likes' ? '/mis-likes' : `/productos?${new URLSearchParams(filters)}`;
-      try { setItems(await marketRequest(token, path, { signal: abort.signal })); }
+      try { setItems(await marketRequest(path, { signal: abort.signal })); }
       catch (err) { if (err.name !== 'AbortError') { setError(err.message); if (err.status === 401) onLogout(); } }
       finally { if (!abort.signal.aborted) setLoading(false); }
     }, 250);
     return () => { clearTimeout(timer); abort.abort(); };
-  }, [token, tab, filters, revision]);
+  }, [tab, filters, revision]);
 
   useEffect(() => {
     setDetail(null); setDetailError('');
     if (!productId) return;
     const abort = new AbortController();
-    marketRequest(token, `/productos/${encodeURIComponent(productId)}`, { signal: abort.signal }).then(setDetail).catch((err) => {
+    marketRequest(`/productos/${encodeURIComponent(productId)}`, { signal: abort.signal }).then(setDetail).catch((err) => {
       if (err.name !== 'AbortError') { setDetailError(err.message); if (err.status === 401) onLogout(); }
     });
     return () => abort.abort();
-  }, [token, productId, revision]);
+  }, [productId, revision]);
 
   useEffect(() => {
     if (editor || deleting || busy) return;
@@ -186,8 +186,8 @@ export default function Mercado({ user, token, onLogout }) {
       throw err;
     } finally { submitting.current = false; setBusy(false); }
   };
-  const act = (path, method, success) => mutate(() => marketRequest(token, path, { method }), success).catch((err) => { setError(err.message); return false; });
-  const like = (item) => mutate(() => marketRequest(token, `/productos/${item.id}/like`, { method: 'PUT', body: { liked: !item.liked } }), item.liked ? 'Quitaste el like.' : 'Agregaste la publicación a Mis likes.').catch((err) => setError(err.message));
+  const act = (path, method, success) => mutate(() => marketRequest(path, { method }), success).catch((err) => { setError(err.message); return false; });
+  const like = (item) => mutate(() => marketRequest(`/productos/${item.id}/like`, { method: 'PUT', body: { liked: !item.liked } }), item.liked ? 'Quitaste el like.' : 'Agregaste la publicación a Mis likes.').catch((err) => setError(err.message));
   const filter = (key, value) => setFilters((previous) => ({ ...previous, [key]: value }));
   const closeDetail = () => navigate('/mercado');
 
@@ -236,7 +236,7 @@ export default function Mercado({ user, token, onLogout }) {
         {notice && <p role="status" className="ok notice">{notice}</p>}
       </>}
     </Modal>}
-    {editor && <Editor item={editor.item} categories={config.categories} busy={busy} close={() => setEditor(null)} save={(body) => mutate(() => marketRequest(token, editor.item ? `/productos/${editor.item.id}` : '/productos', { method: editor.item ? 'PUT' : 'POST', body }), editor.item ? 'Publicación actualizada.' : 'Publicación creada.')} />}
+    {editor && <Editor item={editor.item} categories={config.categories} busy={busy} close={() => setEditor(null)} save={(body) => mutate(() => marketRequest(editor.item ? `/productos/${editor.item.id}` : '/productos', { method: editor.item ? 'PUT' : 'POST', body }), editor.item ? 'Publicación actualizada.' : 'Publicación creada.')} />}
     {deleting && <Modal title="Eliminar publicación" close={() => setDeleting(null)} busy={busy}><p>¿Eliminar “{deleting.title}”? Dejará de mostrarse en Mercado y Mis likes. Se conservará el historial de ventas.</p>
       <button className="btn blue full" disabled={busy} onClick={async () => { const ok = await act(`/productos/${deleting.id}`, 'DELETE', 'Publicación eliminada.'); if (ok && String(productId) === String(deleting.id)) closeDetail(); }}>Confirmar eliminación</button>
       {error && <p className="error" role="alert">{error}</p>}

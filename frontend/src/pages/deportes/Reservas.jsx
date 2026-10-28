@@ -22,7 +22,7 @@ function normalizeHorarios(data) {
   return [];
 }
 
-export default function ReservasDeportivas({ user, token, onLogout, Layout: LayoutProp }) {
+export default function ReservasDeportivas({ user, onLogout, Layout: LayoutProp }) {
   const L = LayoutProp || Layout;
   const { sports, setSports, selectedSport } = useDeportes();
   const [courts, setCourts] = useState([]);
@@ -40,7 +40,7 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
     async function load() {
       try {
         setLoadingCourts(true); setError('');
-        const data = await getDeportes(token, selectedSport);
+        const data = await getDeportes(selectedSport);
         if (!alive) return;
         setSports(Array.isArray(data?.sports) ? data.sports : DEFAULT_SPORTS);
         setCourts(Array.isArray(data?.courts) ? data.courts : []);
@@ -53,7 +53,7 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
     }
     load();
     return () => { alive = false; };
-  }, [token, selectedSport, onLogout]);
+  }, [selectedSport, onLogout]);
 
   useEffect(() => {
     let alive = true;
@@ -61,7 +61,7 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
       if (!selectedCourt || !date) { setSlots([]); setSelectedTime(''); return; }
       try {
         setLoadingSlots(true); setError(''); setSelectedTime('');
-        const data = await getHorarios(token, selectedCourt.id, date);
+        const data = await getHorarios(selectedCourt.id, date);
         if (!alive) return;
         setSlots(normalizeHorarios(data));
       } catch (err) {
@@ -72,7 +72,7 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
     }
     load();
     return () => { alive = false; };
-  }, [token, selectedCourt, date, onLogout]);
+  }, [selectedCourt, date, onLogout]);
 
   const handleSelectCourt = (court) => { setSelectedCourt(court); setDate(''); setSlots([]); setSelectedTime(''); };
 
@@ -80,13 +80,13 @@ export default function ReservasDeportivas({ user, token, onLogout, Layout: Layo
     setError('');
     if (!selectedCourt || !date || !selectedTime) return setError('Selecciona cancha, fecha y horario.');
     try {
-      await createReserva(token, {
+      await createReserva({
         courtId: selectedCourt.id, date, time: selectedTime,
         sport: selectedCourt.sport || selectedSport,
         cantidadJugadores: selectedCourt.capacity || selectedCourt.cantidadMax || 1,
       });
       setToast({ message: 'Reserva confirmada', type: 'success' });
-      const updated = await getHorarios(token, selectedCourt.id, date);
+      const updated = await getHorarios(selectedCourt.id, date);
       setSlots(normalizeHorarios(updated)); setSelectedTime('');
     } catch (err) {
       if (err.status === 401) return onLogout();

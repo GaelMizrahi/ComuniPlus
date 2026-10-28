@@ -26,7 +26,6 @@ const canCancel = (reservation) => {
 
 export default function MisReservas({
   user,
-  token,
   onLogout,
   Layout: LayoutProp
 }) {
@@ -41,7 +40,7 @@ export default function MisReservas({
     try {
       setLoading(true);
 
-      const data = await getMisReservas(token);
+      const data = await getMisReservas();
 
       setReservas(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -76,7 +75,7 @@ export default function MisReservas({
     }
 
     try {
-      await cancelReserva(token, reservation.id);
+      await cancelReserva(reservation.id);
 
       setToast({
         message: 'Reserva cancelada correctamente.',

@@ -1,14 +1,11 @@
+import { apiFetch } from '../../services/api.js';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 
-const API_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-
 export default function CrearPartido({
   user,
-  token,
   onLogout,
   Layout: LayoutProp,
 }) {
@@ -30,16 +27,6 @@ export default function CrearPartido({
     jugadoresNecesarios: 1,
   });
 
-  function getToken() {
-    return (
-      token ||
-      localStorage.getItem('comuni_token') ||
-      localStorage.getItem('token') ||
-      localStorage.getItem('authToken') ||
-      localStorage.getItem('accessToken')
-    );
-  }
-
   function handleChange(e) {
     const { name, value } = e.target;
 
@@ -57,21 +44,10 @@ export default function CrearPartido({
       setError('');
       setSuccess('');
 
-      const authToken = getToken();
-
-      console.log('TOKEN QUE SE ENVÍA:', authToken);
-
-      if (!authToken) {
-        throw new Error(
-          'No hay token. Cerrá sesión e iniciá sesión de nuevo.'
-        );
-      }
-
-      const response = await fetch(`${API_URL}/api/partidos`, {
+      const response = await apiFetch(`/api/partidos`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
           deporte: form.deporte,

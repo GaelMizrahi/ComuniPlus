@@ -1,6 +1,9 @@
 ````markdown
 # Comuni+ MVP
 
+Para la demo con sesión en cookies HttpOnly y frontend/backend juntos en Render,
+seguir [DEMO.md](DEMO.md). El token ya no se entrega a React ni se guarda en localStorage.
+
 <!-- Cambio mínimo para actualizar esta rama con los últimos ajustes del MVP. -->
 
 Base inicial del MVP de Comuni+ con:

@@ -67,7 +67,7 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
   const port = reservation.address().port;
   await new Promise((resolve) => reservation.close(resolve));
   let output = '';
-  const child = spawn(process.execPath,['src/server.js'], { cwd:runtime,env:{ ...process.env, PORT:String(port), SUPABASE_URL:`http://127.0.0.1:${stub.address().port}`, SUPABASE_SERVICE_ROLE_KEY:'local-stub-only', JWT_SECRET:key, NODE_TLS_REJECT_UNAUTHORIZED:'1' },stdio:['ignore','pipe','pipe'] });
+  const child = spawn(process.execPath,['src/server.js'], { cwd:runtime,env:{ ...process.env, NODE_ENV:'development', APP_ORIGIN:'http://127.0.0.1:5173', PORT:String(port), SUPABASE_URL:`http://127.0.0.1:${stub.address().port}`, SUPABASE_SERVICE_ROLE_KEY:'local-stub-only', JWT_SECRET:key, NODE_TLS_REJECT_UNAUTHORIZED:'1' },stdio:['ignore','pipe','pipe'] });
   t.after(() => { child.kill(); });
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Express no inició')),10000);
@@ -76,7 +76,7 @@ test('Express Mercado routes with actual JWT middleware and Supabase client agai
     child.stdout.on('data',(chunk) => { output += chunk; if (output.includes('Backend running')) { clearTimeout(timer); resolve(); } });
   });
   const request = async (path, claims, method='GET', body) => {
-    const headers = claims ? { Authorization:`Bearer ${jwt.sign(claims,key,{ expiresIn:'5m' })}` } : {};
+    const headers = claims ? { Cookie:`comuni_session=${jwt.sign(claims,key,{ expiresIn:'5m' })}`, Origin:'http://127.0.0.1:5173' } : { Origin:'http://127.0.0.1:5173' };
     if (body) headers['Content-Type']='application/json';
     return fetch(`http://127.0.0.1:${port}${path}`,{ method,headers,...(body ? { body:JSON.stringify(body) } : {}) });
   };
