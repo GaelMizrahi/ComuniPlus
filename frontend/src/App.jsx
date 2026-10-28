@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { apiFetch } from './services/api.js';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import './App.css';
 
@@ -26,8 +27,8 @@ import MisReservas from './pages/deportes/MisReservas.jsx';
 |--------------------------------------------------------------------------
 */
 
-const Protected = ({ user, token, children }) => {
-  if (!user || !token) {
+const Protected = ({ user, children }) => {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -42,61 +43,53 @@ const Protected = ({ user, token, children }) => {
 */
 
 export default function App() {
-  const [user, setUser] = useState(() => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState('');
+  const [logoutError, setLogoutError] = useState('');
+
+  const restoreSession = useCallback(async (signal) => {
     try {
-      return JSON.parse(
-        localStorage.getItem('comuni_user') || 'null'
-      );
-    } catch {
-      return null;
-    }
-  });
+      const response = await apiFetch('/api/session', { signal });
+      if (response.status === 401) { setUser(null); setSessionError(''); return; }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'No se pudo recuperar la sesión');
+      setUser(data.user); setSessionError('');
+    } catch (error) {
+      if (error.name !== 'AbortError') setSessionError(error.message || 'No se pudo conectar con el servidor');
+    } finally { if (!signal?.aborted) setLoading(false); }
+  }, []);
 
-  const [token, setToken] = useState(
-    () => localStorage.getItem('comuni_token') || ''
-  );
+  useEffect(() => {
+    // Remove credentials saved by earlier app versions. Never persist new sessions.
+    try { for (const key of ['comuni_token', 'comuni_user', 'token', 'authToken', 'accessToken']) localStorage.removeItem(key); } catch {}
+    const abort = new AbortController();
+    restoreSession(abort.signal);
+    const expired = () => { setUser(null); setSessionError(''); };
+    window.addEventListener('session-expired', expired);
+    return () => { abort.abort(); window.removeEventListener('session-expired', expired); };
+  }, [restoreSession]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | Login
-  |--------------------------------------------------------------------------
-  */
+  const onLogin = (newUser) => { setUser(newUser); setSessionError(''); setLogoutError(''); };
+  const onLogout = useCallback(async () => {
+    setLogoutError('');
+    try {
+      const response = await apiFetch('/api/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('No se pudo cerrar sesión. Reintentá.');
+      setUser(null); setSessionError('');
+    } catch { setLogoutError('No se pudo cerrar sesión. Revisá la conexión y reintentá.'); }
+  }, []);
 
-  const onLogin = (newUser, newToken) => {
-    setUser(newUser);
-    setToken(newToken);
-
-    localStorage.setItem(
-      'comuni_user',
-      JSON.stringify(newUser)
-    );
-
-    localStorage.setItem(
-      'comuni_token',
-      newToken
-    );
-  };
-
-
-  /*
-  |--------------------------------------------------------------------------
-  | Logout
-  |--------------------------------------------------------------------------
-  */
-
-  const onLogout = () => {
-    setUser(null);
-    setToken('');
-
-    localStorage.removeItem('comuni_user');
-    localStorage.removeItem('comuni_token');
-  };
+  if (loading) return <main className="p-8" role="status">Cargando sesión…</main>;
+  if (sessionError) return <main className="p-8"><p role="alert">{sessionError}</p><button className="btn blue mt-4" onClick={() => { setLoading(true); restoreSession(); }}>Reintentar</button></main>;
 
 
   return (
+    <>
+    {logoutError && <p role="alert" className="error p-4">{logoutError}</p>}
     <Routes>
-      <Route path="/registro" element={user && token ? <Navigate to="/home" replace /> : <Registro />} />
-      <Route path="/solicitudes-acceso" element={<Protected user={user} token={token}><SolicitudesAcceso user={user} token={token} onLogout={onLogout}/></Protected>} />
+      <Route path="/registro" element={user ? <Navigate to="/home" replace /> : <Registro />} />
+      <Route path="/solicitudes-acceso" element={<Protected user={user}><SolicitudesAcceso user={user} onLogout={onLogout}/></Protected>} />
 
       {/* ================================================================
           LOGIN
@@ -105,7 +98,7 @@ export default function App() {
       <Route
         path="/login"
         element={
-          user && token ? (
+          user ? (
             <Navigate to="/home" replace />
           ) : (
             <Login onLogin={onLogin} />
@@ -121,7 +114,7 @@ export default function App() {
       <Route
         path="/"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Navigate to="/home" replace />
           </Protected>
         }
@@ -130,7 +123,7 @@ export default function App() {
       <Route
         path="/home"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Home
               user={user}
               onLogout={onLogout}
@@ -147,10 +140,9 @@ export default function App() {
       <Route
         path="/viajes"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Viajes
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -160,10 +152,9 @@ export default function App() {
       <Route
         path="/viajes/solicitar"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Solicitar
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -178,10 +169,9 @@ export default function App() {
       <Route
         path="/reservas"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Reservas
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -196,10 +186,9 @@ export default function App() {
       <Route
         path="/mercado"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Mercado
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -210,8 +199,8 @@ export default function App() {
       <Route
         path="/mercado/productos/:productId"
         element={
-          <Protected user={user} token={token}>
-            <Mercado user={user} token={token} onLogout={onLogout} />
+          <Protected user={user}>
+            <Mercado user={user} onLogout={onLogout} />
           </Protected>
         }
       />
@@ -223,10 +212,9 @@ export default function App() {
       <Route
         path="/perfil"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Perfil
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -241,10 +229,9 @@ export default function App() {
       <Route
         path="/deportes"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <Deportes
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -259,10 +246,9 @@ export default function App() {
       <Route
         path="/deportes/reservas"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <ReservasDeportivas
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -277,10 +263,9 @@ export default function App() {
       <Route
         path="/deportes/falta-jugador"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <FaltaJugador
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -295,10 +280,9 @@ export default function App() {
       <Route
         path="/deportes/falta-jugador/crear"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <CrearPartido
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -313,10 +297,9 @@ export default function App() {
       <Route
         path="/deportes/mis-reservas"
         element={
-          <Protected user={user} token={token}>
+          <Protected user={user}>
             <MisReservas
               user={user}
-              token={token}
               onLogout={onLogout}
             />
           </Protected>
@@ -334,5 +317,6 @@ export default function App() {
       />
 
     </Routes>
+    </>
   );
 }

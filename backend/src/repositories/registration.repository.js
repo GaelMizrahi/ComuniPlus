@@ -8,6 +8,7 @@ export function createRegistrationRepository(db) {
     communities: () => result(db.from('Comunidad').select('id,nombre,tipo').order('nombre')),
     community: (id) => result(db.from('Comunidad').select('id,nombre').eq('id', id).maybeSingle()),
     userByEmail: (email) => result(db.from('Usuario').select('id,nombre,apellido,mail,telefono,contraseña').eq('mailNormalizado', email).maybeSingle()),
+    userById: (id) => result(db.from('Usuario').select('id,nombre,apellido,mail,telefono').eq('id', id).maybeSingle()),
     memberships: (id) => result(db.from('ComunidadUsuario').select('id,idUsuario,idComunidad,aceptado,rechazado,nroSocio,foto').eq('idUsuario', id).order('id')),
     membership: (claims) => result(db.from('ComunidadUsuario').select('id,idUsuario,idComunidad,aceptado')
       .eq('id', claims.idComunidadUsuario).eq('idUsuario', claims.idUsuario).eq('idComunidad', claims.idComunidad).eq('aceptado', true).maybeSingle()),

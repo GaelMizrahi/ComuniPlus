@@ -1,3 +1,4 @@
+import { apiFetch } from '../services/api.js';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout.jsx';
@@ -8,20 +9,18 @@ import RouteBox from '../components/ui/RouteBox.jsx';
 import Toast from '../components/ui/Toast.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-const authHeaders = (t) => ({ Authorization: `Bearer ${t}` });
-const jsonHeaders = (t) => ({ 'Content-Type': 'application/json', ...authHeaders(t) });
+const jsonHeaders = (t) => ({ 'Content-Type': 'application/json' });
 
 const AVATAR_IDS = [14, 22, 36, 44, 51, 63];
 
-export default function Viajes({ user, token, onLogout }) {
+export default function Viajes({ user, onLogout }) {
   const nav = useNavigate();
   const [rides, setRides] = useState([]);
   const [toast, setToast] = useState(null);
 
   const load = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/rides`, { headers: authHeaders(token) });
+      const res = await apiFetch(`/api/rides`, {});
       if (res.status === 401) return onLogout();
       const data = await res.json();
       setRides(Array.isArray(data) ? data : []);
@@ -31,7 +30,7 @@ export default function Viajes({ user, token, onLogout }) {
   useEffect(() => { load(); }, []);
 
   const confirmOffer = async (rideId) => {
-    const res = await fetch(`${API_URL}/api/rides/${rideId}/offer`, { method: 'POST', headers: jsonHeaders(token) });
+    const res = await apiFetch(`/api/rides/${rideId}/offer`, { method: 'POST', headers: jsonHeaders() });
     if (res.status === 401) return onLogout();
     const data = await res.json();
     if (!res.ok) return setToast({ message: data.message || 'Error', type: 'error' });
@@ -40,7 +39,7 @@ export default function Viajes({ user, token, onLogout }) {
   };
 
   const cancelOwn = async (rideId) => {
-    const res = await fetch(`${API_URL}/api/rides/${rideId}/cancel`, { method: 'POST', headers: jsonHeaders(token) });
+    const res = await apiFetch(`/api/rides/${rideId}/cancel`, { method: 'POST', headers: jsonHeaders() });
     if (res.status === 401) return onLogout();
     setToast({ message: 'Solicitud cancelada', type: 'success' });
     load();

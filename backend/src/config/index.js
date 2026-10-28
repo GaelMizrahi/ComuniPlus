@@ -44,6 +44,9 @@ if (!supabaseUrl || !supabaseServiceKey || !jwtSecret) {
     'Faltan SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY o JWT_SECRET en backend/.env'
   );
 }
+if (process.env.NODE_ENV === 'production' && Buffer.byteLength(jwtSecret) < 32) {
+  throw new Error('JWT_SECRET debe contener al menos 32 bytes en producción');
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {

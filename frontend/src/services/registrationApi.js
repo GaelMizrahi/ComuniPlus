@@ -1,8 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+import { apiFetch } from './api.js';
 
-export async function registrationRequest(path, { token, method = 'GET', body, signal } = {}) {
-  const response = await fetch(`${API_URL}/api${path}`, {
-    method, signal, headers: { ...(token ? { Authorization:`Bearer ${token}` } : {}), ...(body ? { 'Content-Type':'application/json' } : {}) },
+export async function registrationRequest(path, { method = 'GET', body, signal } = {}) {
+  const response = await apiFetch(`/api${path}`, {
+    method, signal, headers: { ...(body ? { 'Content-Type':'application/json' } : {}) },
     ...(body ? { body:JSON.stringify(body) } : {})
   });
   const data = await response.json().catch(() => ({}));

@@ -1,3 +1,4 @@
+import { apiFetch } from '../../services/api.js';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,14 +10,10 @@ import DatePill from '../../components/ui/DatePill.jsx';
 import Toast from '../../components/ui/Toast.jsx';
 import EmptyState from '../../components/ui/EmptyState.jsx';
 
-const API_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-
 import { useDeportes } from '../../context/DeportesContext';
 
 export default function FaltaJugador({
   user,
-  token,
   onLogout,
   Layout: LayoutProp,
 }) {
@@ -29,16 +26,6 @@ export default function FaltaJugador({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [joiningId, setJoiningId] = useState(null);
-
-  function getToken() {
-    return (
-      token ||
-      localStorage.getItem('comuni_token') ||
-      localStorage.getItem('token') ||
-      localStorage.getItem('authToken') ||
-      localStorage.getItem('accessToken')
-    );
-  }
 
   async function parseResponse(response) {
     const text = await response.text();
@@ -65,29 +52,14 @@ export default function FaltaJugador({
       setLoading(true);
       setError('');
 
-      const authToken = getToken();
-
-      if (!authToken) {
-        throw new Error('No hay token. Volvé a iniciar sesión.');
-      }
-
       const query =
         selectedSport && selectedSport !== 'Todos'
           ? `?deporte=${encodeURIComponent(selectedSport)}`
           : '';
 
-      const response = await fetch(
-        `${API_URL}/api/partidos${query}`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
+      const response = await apiFetch(`/api/partidos${query}`);
 
       const data = await parseResponse(response);
-
-      console.log('PARTIDOS RECIBIDOS:', data);
 
       setPartidos(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -108,19 +80,9 @@ export default function FaltaJugador({
       setToast(null);
       setError('');
 
-      const authToken = getToken();
-
-      if (!authToken) {
-        throw new Error('No hay token. Volvé a iniciar sesión.');
-      }
-
-      const response = await fetch(
-        `${API_URL}/api/partidos/${partidoId}/unirse`,
+      const response = await apiFetch(`/api/partidos/${partidoId}/unirse`,
         {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
         }
       );
 

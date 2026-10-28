@@ -1,7 +1,7 @@
+import { apiFetch } from '../services/api.js';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
 export default function Login({ onLogin }) {
   const nav = useNavigate();
@@ -15,14 +15,14 @@ export default function Login({ onLogin }) {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/login`, {
+      const res = await apiFetch(`/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       });
       const data = await res.json();
       if (!res.ok) return setError(data.message || 'Credenciales inválidas');
-      onLogin(data.user, data.token);
+      onLogin(data.user);
       nav('/home');
     } catch {
       setError('No se pudo conectar con el servidor');

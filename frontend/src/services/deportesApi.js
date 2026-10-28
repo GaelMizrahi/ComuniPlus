@@ -1,13 +1,7 @@
-const API_URL =
-  import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+import { apiFetch } from './api.js';
 
-const authHeaders = (token) => ({
-  Authorization: `Bearer ${token}`
-});
-
-const jsonHeaders = (token) => ({
+const jsonHeaders = () => ({
   'Content-Type': 'application/json',
-  ...authHeaders(token)
 });
 
 async function parseResponse(response) {
@@ -38,38 +32,27 @@ async function parseResponse(response) {
   return data;
 }
 
-export async function getDeportes(token, sport) {
+export async function getDeportes(sport) {
   const query = sport
     ? `?deporte=${encodeURIComponent(sport)}`
     : '';
 
-  const response = await fetch(
-    `${API_URL}/api/deportes${query}`,
-    {
-      headers: authHeaders(token)
-    }
-  );
+  const response = await apiFetch(`/api/deportes${query}`);
 
   return parseResponse(response);
 }
 
-export async function getHorarios(token, courtId, date) {
-  const response = await fetch(
-    `${API_URL}/api/deportes/${courtId}/horarios?fecha=${encodeURIComponent(date)}`,
-    {
-      headers: authHeaders(token)
-    }
-  );
+export async function getHorarios(courtId, date) {
+  const response = await apiFetch(`/api/deportes/${courtId}/horarios?fecha=${encodeURIComponent(date)}`);
 
   return parseResponse(response);
 }
 
-export async function createReserva(token, payload) {
-  const response = await fetch(
-    `${API_URL}/api/reservas`,
+export async function createReserva(payload) {
+  const response = await apiFetch(`/api/reservas`,
     {
       method: 'POST',
-      headers: jsonHeaders(token),
+      headers: jsonHeaders(),
       body: JSON.stringify(payload)
     }
   );
@@ -77,12 +60,10 @@ export async function createReserva(token, payload) {
   return parseResponse(response);
 }
 
-export async function getMisReservas(token) {
-  const response = await fetch(
-    `${API_URL}/api/reservas/mias?t=${Date.now()}`,
+export async function getMisReservas() {
+  const response = await apiFetch(`/api/reservas/mias?t=${Date.now()}`,
     {
       method: 'GET',
-      headers: authHeaders(token),
       cache: 'no-store'
     }
   );
@@ -90,24 +71,21 @@ export async function getMisReservas(token) {
   return parseResponse(response);
 }
 
-export async function cancelReserva(token, reservationId) {
-  const response = await fetch(
-    `${API_URL}/api/reservas/${reservationId}`,
+export async function cancelReserva(reservationId) {
+  const response = await apiFetch(`/api/reservas/${reservationId}`,
     {
-      method: 'DELETE',
-      headers: authHeaders(token)
+      method: 'DELETE'
     }
   );
 
   return parseResponse(response);
 }
 
-export async function createPartido(token, payload) {
-  const response = await fetch(
-    `${API_URL}/api/partidos`,
+export async function createPartido(payload) {
+  const response = await apiFetch(`/api/partidos`,
     {
       method: 'POST',
-      headers: jsonHeaders(token),
+      headers: jsonHeaders(),
       body: JSON.stringify(payload)
     }
   );
@@ -115,23 +93,16 @@ export async function createPartido(token, payload) {
   return parseResponse(response);
 }
 
-export async function getPartidos(token) {
-  const response = await fetch(
-    `${API_URL}/api/partidos`,
-    {
-      headers: authHeaders(token)
-    }
-  );
+export async function getPartidos() {
+  const response = await apiFetch(`/api/partidos`);
 
   return parseResponse(response);
 }
 
-export async function deletePartido(token, partidoId) {
-  const response = await fetch(
-    `${API_URL}/api/partidos/${partidoId}`,
+export async function deletePartido(partidoId) {
+  const response = await apiFetch(`/api/partidos/${partidoId}`,
     {
-      method: 'DELETE',
-      headers: authHeaders(token)
+      method: 'DELETE'
     }
   );
 

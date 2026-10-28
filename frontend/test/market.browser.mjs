@@ -18,14 +18,17 @@ let rows = [
   { id: 1, title: 'Mesa de madera', description: 'Mesa grande para el hogar', price: 150, category: 'Hogar', condition: 2, type: 'producto', availability: 1, image, sellerName: 'Vendedor Prueba', sellerPhone: '5491100000000', whatsappLink: 'https://wa.me/5491100000000?text=Hola', owner: 'seller', reservedBy: null },
   { id: 2, title: 'Libro escolar', description: 'Libro nuevo', price: 30, category: 'Libros', condition: 1, type: 'producto', availability: 1, image, sellerName: 'Comprador Prueba', sellerPhone: '5491100000001', whatsappLink: null, owner: 'buyer', reservedBy: null }
 ];
+const mockUser = (role) => ({ id: role === 'buyer' ? 2 : 1, fullName: 'Usuario Prueba', community: 'Comunidad Prueba', nroSocio: 10 });
 const seed = async (role) => {
-  await page.addInitScript((role) => {
-    localStorage.setItem('comuni_token', role);
-    localStorage.setItem('comuni_user', JSON.stringify({ id: role === 'buyer' ? 2 : 1, fullName: 'Usuario Prueba', community: 'Comunidad Prueba', nroSocio: 10 }));
-  }, role);
+  await page.context().addCookies([{name:'comuni_session',value:role,domain:'127.0.0.1',path:'/',httpOnly:true,sameSite:'Lax'}]);
 };
+await browser.contexts()[0].route('**/api/session', async (route) => {
+  const cookie=(await route.request().allHeaders()).cookie??'';
+  const role=cookie.match(/comuni_session=([^;]+)/)?.[1];
+  await route.fulfill({status:role?200:401,contentType:'application/json',body:JSON.stringify(role?{user:mockUser(role)}:{message:'Iniciá sesión'}),headers:{'Access-Control-Allow-Origin':'http://127.0.0.1:5173','Access-Control-Allow-Credentials':'true'}});
+});
 await page.route('**/api/mercado/**', async (route) => {
-  const req = route.request(); const url = new URL(req.url()); const role = req.headers().authorization?.slice(7);
+  const req = route.request(); const url = new URL(req.url()); const role = (await req.allHeaders()).cookie?.match(/comuni_session=([^;]+)/)?.[1];
   const path = url.pathname.replace('/api/mercado','');
   const method = req.method();
   const shape = (row) => ({ ...row, visible:row.visible??true, liked:row.likes?.has(role)??false, isPublished:published(row), canLike:published(row), isOwner: row.owner === role, canDelete: row.owner === role });
@@ -65,7 +68,7 @@ await page.route('**/api/mercado/**', async (route) => {
     else if (method === 'DELETE') { rows = rows.filter((r) => r !== row); data = { ok: true }; }
     else { status = 400; data = { message: 'Request inesperado' }; }
   }
-  await route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Headers':'Authorization, Content-Type', 'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS' }, body: JSON.stringify(data) });
+  await route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin':'http://127.0.0.1:5173', 'Access-Control-Allow-Credentials':'true', 'Access-Control-Allow-Headers':'Authorization, Content-Type', 'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS' }, body: JSON.stringify(data) });
 });
 
 try {
@@ -209,6 +212,7 @@ try {
   assert.deepEqual(routerWarnings,[]);
   console.log('PASS Mercado vacío sin error, favicon disponible y React Router sin avisos de migración');
   const loggedOut = await browser.newPage();
+  await loggedOut.route('**/api/session', (route) => route.fulfill({status:401,contentType:'application/json',body:'{}',headers:{'Access-Control-Allow-Origin':'http://127.0.0.1:5173','Access-Control-Allow-Credentials':'true'}}));
   for (const path of ['/mercado','/mercado/productos/1']) {
     await loggedOut.goto(`http://127.0.0.1:5173${path}`);
     await loggedOut.waitForURL('**/login');

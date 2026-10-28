@@ -1,9 +1,9 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+import { apiFetch } from './api.js';
 
-export async function marketRequest(token, path, { method = 'GET', body, signal } = {}) {
-  const response = await fetch(`${API_URL}/api/mercado${path}`, {
+export async function marketRequest(path, { method = 'GET', body, signal } = {}) {
+  const response = await apiFetch(`/api/mercado${path}`, {
     method, signal,
-    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {})
   });
   const data = await response.json().catch(() => ({}));

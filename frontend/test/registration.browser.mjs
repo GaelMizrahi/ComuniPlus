@@ -12,9 +12,13 @@ const session=(account)=>({id:account.id,idUsuario:account.id,idComunidad:accoun
 await page.route('https://i.pravatar.cc/**',(route)=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1kAAAAASUVORK5CYII=','base64')}));
 await page.route('**/api/**',async(route)=>{
   const req=route.request(),url=new URL(req.url());const path=url.pathname.replace('/api','');const method=req.method();
-  const actor=accounts.find((a)=>`token-${a.id}`===req.headers().authorization?.slice(7));
+  const cookie=(await req.allHeaders()).cookie??'';
+  const actor=accounts.find((a)=>`session-${a.id}`===cookie.match(/comuni_session=([^;]+)/)?.[1]);
+  const responseHeaders={};
   let status=200,data={};
   if(method==='OPTIONS')data={};
+  else if(path==='/session'){if(actor)data={user:session(actor)};else{status=401;data={message:'Iniciá sesión'};}}
+  else if(path==='/logout'){responseHeaders['Set-Cookie']='comuni_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';data={ok:true};}
   else if(path==='/registro/comunidades')data=[{id:1,nombre:'Comunidad A'},{id:2,nombre:'Comunidad B'}];
   else if(path==='/registro'&&method==='POST'){
     postCount++;const body=req.postDataJSON();
@@ -26,14 +30,14 @@ await page.route('**/api/**',async(route)=>{
     const body=req.postDataJSON(),account=accounts.find((a)=>a.email===body.email.toLowerCase()&&a.password===body.password);
     if(!account){status=401;data={message:'Credenciales inválidas'};}
     else if(!account.accepted){status=403;data={message:account.rejected?'Tu solicitud fue rechazada. Contactá al administrador de la comunidad.':'Tu solicitud está pendiente de aprobación del administrador.'};}
-    else data={token:`token-${account.id}`,user:session(account)};
+    else {data={user:session(account)};responseHeaders['Set-Cookie']=`comuni_session=session-${account.id}; Path=/; HttpOnly; SameSite=Lax`;}
   }else if(path==='/solicitudes-acceso/permisos')data={isAdmin:actor?.admin??false};
   else if(path.startsWith('/solicitudes-acceso')){
     if(!actor?.admin){status=403;data={message:'Solo los administradores de esta comunidad pueden gestionar solicitudes'};}
     else if(method==='GET')data=accounts.filter((a)=>a.communityId==1&&!a.accepted&&!a.rejected).map((a)=>({id:a.id,fullName:`${a.firstName} ${a.lastName}`,email:a.email,phone:a.phone,membershipNumber:a.membershipNumber,requestedAt:'2026-10-23T12:00:00Z'}));
     else {const target=accounts.find((a)=>a.id===Number(path.split('/').at(-1)));const {action}=req.postDataJSON();target.accepted=action==='aprobar';target.rejected=!target.accepted;data={message:target.accepted?'Solicitud aprobada. La persona ya puede iniciar sesión.':'Solicitud rechazada.'};}
   }else{status=404;data={message:'Ruta inesperada en la prueba'};}
-  await route.fulfill({status,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS'},body:JSON.stringify(data)});
+  await route.fulfill({status,contentType:'application/json',headers:{...responseHeaders,'Access-Control-Allow-Credentials':'true','Access-Control-Allow-Origin':'http://127.0.0.1:5173','Access-Control-Allow-Headers':'Authorization, Content-Type','Access-Control-Allow-Methods':'GET,POST,PATCH,OPTIONS'},body:JSON.stringify(data)});
 });
 const login=async(email,pass)=>{
   await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Contraseña',{exact:true}).fill(pass);
