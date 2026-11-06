@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../ui/Avatar.jsx';
+import ClubLogo from '../ui/ClubLogo.jsx';
 
 export default function TopBar({ user }) {
   return (
@@ -8,6 +9,7 @@ export default function TopBar({ user }) {
       <Link to="/home" className="text-[17px] font-extrabold tracking-[-0.03em]">
         <span className="text-accent">Comuni+</span>
       </Link>
+      {user?.community && <ClubLogo src={user.communityLogo} name={user.community} className="w-7 h-7" />}
 
       {user?.fullName && (
         <div className="ml-auto flex items-center gap-2.5">

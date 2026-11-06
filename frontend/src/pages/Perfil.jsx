@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../components/ui/Avatar.jsx';
+import ClubLogo from '../components/ui/ClubLogo.jsx';
 import { registrationRequest } from '../services/registrationApi.js';
 import Layout from '../components/layout/Layout.jsx';
 import ElevatedCard from '../components/ui/ElevatedCard.jsx';
@@ -64,6 +65,7 @@ export default function Perfil({ user, onLogout }) {
           {user.fullName}
         </h2>
 
+        <ClubLogo src={user.communityLogo} name={user.community} className="w-10 h-10 mt-3" />
         <p className="text-[13px] text-text-muted mt-1 font-medium">
           {user.community}
         </p>

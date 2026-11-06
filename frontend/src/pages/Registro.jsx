@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { registrationRequest } from '../services/registrationApi.js';
+import ClubLogo from '../components/ui/ClubLogo.jsx';
 
 const field = 'field w-full';
 const empty = { firstName:'',lastName:'',email:'',phone:'',membershipNumber:'',communityId:'',password:'',confirmPassword:'' };
@@ -14,6 +15,7 @@ export default function Registro() {
   const [revision,setRevision]=useState(0);
   const [success,setSuccess]=useState('');
   const sending=useRef(false);
+  const selectedCommunity = communities.find((community) => String(community.id) === String(form.communityId));
   useEffect(()=>{
     const abort=new AbortController(); setLoading(true); setCommunityError('');
     registrationRequest('/registro/comunidades',{signal:abort.signal}).then(setCommunities).catch((e)=>{
@@ -52,6 +54,10 @@ export default function Registro() {
           <label htmlFor="register-community">Comunidad</label><select id="register-community" className={field} required disabled={loading || Boolean(communityError)} value={form.communityId} onChange={(e)=>change('communityId',e.target.value)}>
             <option value="">{loading ? 'Cargando comunidades…' : 'Elegí tu comunidad'}</option>{communities.map((c)=><option value={c.id} key={c.id}>{c.nombre}</option>)}
           </select>
+          {selectedCommunity && <div className="flex items-center gap-3 mt-3 p-3 rounded-xl bg-surface" aria-live="polite">
+            <ClubLogo src={selectedCommunity.logoUrl} name={selectedCommunity.nombre} />
+            <span className="font-semibold text-sm">{selectedCommunity.nombre}</span>
+          </div>}
           {!loading && !communityError && !communities.length && <p role="status" className="mt-2">No hay comunidades disponibles. Consultá al administrador.</p>}
           <label htmlFor="register-number">Número de socio</label><input id="register-number" className={field} inputMode="numeric" pattern="[0-9]{1,15}" maxLength={15} required value={form.membershipNumber} onChange={(e)=>change('membershipNumber',e.target.value)}/>
           <label htmlFor="register-password">Contraseña</label><input id="register-password" className={field} type="password" autoComplete="new-password" minLength={12} maxLength={128} required value={form.password} onChange={(e)=>change('password',e.target.value)}/>

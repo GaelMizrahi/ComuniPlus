@@ -5,10 +5,11 @@ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'
 const page=await browser.newPage({viewport:{width:390,height:844}});
 const errors=[];page.on('pageerror',(error)=>errors.push(error.message));
 const password='Nueva Clave123!';
+const logo='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1kAAAAASUVORK5CYII=';
 const accounts=[{id:1,firstName:'Admin',lastName:'Prueba',email:'admin@example.com',password:'AdminClave123!',phone:'5491100000001',communityId:1,membershipNumber:100,accepted:true,admin:true},
   {id:2,firstName:'Pendiente',lastName:'Rechazo',email:'rechazo@example.com',password,phone:'5491100000002',communityId:1,membershipNumber:102,accepted:false,rejected:false}];
 let postCount=0;
-const session=(account)=>({id:account.id,idUsuario:account.id,idComunidad:account.communityId,idComunidadUsuario:account.id,nroSocio:account.membershipNumber,fullName:`${account.firstName} ${account.lastName}`,community:'Comunidad A',isAdmin:account.admin??false,foto:null});
+const session=(account)=>({id:account.id,idUsuario:account.id,idComunidad:account.communityId,idComunidadUsuario:account.id,nroSocio:account.membershipNumber,fullName:`${account.firstName} ${account.lastName}`,community:'Comunidad A',communityLogo:logo,isAdmin:account.admin??false,foto:null});
 await page.route('https://i.pravatar.cc/**',(route)=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jB1kAAAAASUVORK5CYII=','base64')}));
 await page.route('**/api/**',async(route)=>{
   const req=route.request(),url=new URL(req.url());const path=url.pathname.replace('/api','');const method=req.method();
@@ -19,7 +20,7 @@ await page.route('**/api/**',async(route)=>{
   if(method==='OPTIONS')data={};
   else if(path==='/session'){if(actor)data={user:session(actor)};else{status=401;data={message:'Iniciá sesión'};}}
   else if(path==='/logout'){responseHeaders['Set-Cookie']='comuni_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0';data={ok:true};}
-  else if(path==='/registro/comunidades')data=[{id:1,nombre:'Comunidad A'},{id:2,nombre:'Comunidad B'}];
+  else if(path==='/registro/comunidades')data=[{id:1,nombre:'Comunidad A',logoUrl:logo},{id:2,nombre:'Comunidad B',logoUrl:null}];
   else if(path==='/registro'&&method==='POST'){
     postCount++;const body=req.postDataJSON();
     assert.equal(body.membershipNumber,'123');assert.equal(body.communityId,'1');
@@ -48,6 +49,9 @@ try{
   await page.getByLabel('Nombre',{exact:true}).fill('Ana');await page.getByLabel('Apellido',{exact:true}).fill('Pérez');
   await page.getByLabel('Email',{exact:true}).fill('ana@example.com');await page.getByLabel('Teléfono',{exact:true}).fill('+5491123456789');
   await page.getByLabel('Comunidad',{exact:true}).selectOption('1');await page.getByLabel('Número de socio',{exact:true}).fill('123');
+  await page.getByRole('img',{name:'Logo de Comunidad A',exact:true}).waitFor();
+  await page.getByLabel('Comunidad',{exact:true}).selectOption('2');await page.getByRole('img',{name:'Comunidad B: logo pendiente',exact:true}).waitFor();
+  await page.getByLabel('Comunidad',{exact:true}).selectOption('1');
   await page.getByLabel('Contraseña',{exact:true}).fill(password);await page.getByLabel('Repetir contraseña',{exact:true}).fill('Otra Clave123!');
   await page.getByRole('button',{name:'Crear cuenta y solicitar acceso',exact:true}).click();
   await page.getByRole('alert').getByText('Las contraseñas no coinciden',{exact:true}).waitFor();assert.equal(postCount,0);
@@ -71,12 +75,13 @@ try{
   await page.getByRole('link',{name:'Perfil',exact:true}).click();await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();await page.waitForURL('**/login');
   await login('rechazo@example.com',password);await page.getByText('Tu solicitud fue rechazada. Contactá al administrador de la comunidad.',{exact:true}).waitFor();
   await login('ana@example.com',password);await page.getByRole('heading',{name:'Hola, Ana',exact:true}).waitFor();
+  assert.equal(await page.getByRole('img',{name:'Logo de Comunidad A',exact:true}).count(),2);
   console.log('PASS administrador aprueba/rechaza, rechazado no entra y aprobado puede iniciar sesión');
 
   await page.getByRole('link',{name:'Perfil',exact:true}).click();
   await page.waitForTimeout(300);
   assert.equal(await page.getByRole('link',{name:/Solicitudes de acceso/}).count(),0);
-  assert.equal(await page.locator('img').count(),0); // fallback initials, no broken profile image
+  assert.equal(await page.locator('img[alt="Ana Pérez"]').count(),0); // profile initials; club logos remain visible
   await page.goto('http://127.0.0.1:5173/solicitudes-acceso');
   await page.getByRole('alert').getByText('Solo los administradores de esta comunidad pueden gestionar solicitudes',{exact:true}).waitFor();
   assert.equal(await page.locator('article').count(),0);assert.deepEqual(errors,[]);

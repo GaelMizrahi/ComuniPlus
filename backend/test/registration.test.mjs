@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { registrationData, normalizeEmail, createRegistrationService, createLoginService } from '../src/services/registration.service.js';
+import { registrationData, normalizeEmail, createRegistrationService, createLoginService, createSessionService } from '../src/services/registration.service.js';
 import { hashPassword,verifyPassword } from '../src/utils/passwords.js';
 import { createRegistrationRepository } from '../src/repositories/registration.repository.js';
 import { authRateLimit } from '../src/middleware/auth-rate-limit.js';
@@ -10,6 +10,24 @@ const member={id:10,idUsuario:1,idComunidad:1,aceptado:true,nroSocio:123};
 const claims={idUsuario:1,idComunidad:1,idComunidadUsuario:10};
 const user={id:1,nombre:'Ana',apellido:'Pérez',mail:'ana@example.com',telefono:5491123456789,contraseña:'stored-hash'};
 const denied=(code)=>(e)=>e.statusCode===code;
+test('club logos are included in login and restored sessions without being copied into the JWT',async()=>{
+  const {repo}=fixture({community:async()=>({id:1,nombre:'Ferro',logoUrl:'/club-logos/ferro.png'}),userById:async()=>user});
+  let signed;
+  const login=createLoginService(repo,{verify:async()=>true,hash:async()=> 'test-hash',signToken:(payload)=>{signed=payload;return 'token';}});
+  assert.equal((await login(body.email,body.password)).user.communityLogo,'/club-logos/ferro.png');
+  assert.equal(signed.communityLogo,undefined);
+  assert.equal((await createSessionService(repo)(claims)).communityLogo,'/club-logos/ferro.png');
+});
+test('missing logo column has a read-only fallback; other database failures are not suppressed',async()=>{
+  const columns=[];
+  const fake=(code)=>({from:()=>{
+    const chain={select(value){this.columns=value;columns.push(value);return this;},order(){return this;},eq(){return this;},maybeSingle(){return this;},then(ok){return Promise.resolve(this.columns.includes('logoUrl')?{error:{code}}:{data:[{id:1,nombre:'Club anterior'}]}).then(ok);}};
+    return chain;
+  }});
+  assert.equal((await createRegistrationRepository(fake('42703')).communities())[0].nombre,'Club anterior');
+  assert.deepEqual(columns,['id,nombre,tipo,logoUrl','id,nombre,tipo']);
+  await assert.rejects(createRegistrationRepository(fake('42501')).communities(),(e)=>e.code==='42501');
+});
 function fixture(overrides={}){
   const calls=[];
   const repo={communities:async()=>[{id:1,nombre:'Comunidad A'}],community:async(id)=>id===1?{id:1,nombre:'Comunidad A'}:null,

@@ -4,9 +4,21 @@ export function createRegistrationRepository(db) {
     if (error) throw error;
     return data;
   };
+  // Keep login available while the incremental logo migration is being applied.
+  const withLogo = async (query, legacyQuery) => {
+    try { return await result(query()); }
+    catch (error) {
+      if (!['42703', 'PGRST204'].includes(error.code)) throw error;
+      return result(legacyQuery());
+    }
+  };
   return {
-    communities: () => result(db.from('Comunidad').select('id,nombre,tipo').order('nombre')),
-    community: (id) => result(db.from('Comunidad').select('id,nombre').eq('id', id).maybeSingle()),
+    communities: () => withLogo(
+      () => db.from('Comunidad').select('id,nombre,tipo,logoUrl').order('nombre'),
+      () => db.from('Comunidad').select('id,nombre,tipo').order('nombre')),
+    community: (id) => withLogo(
+      () => db.from('Comunidad').select('id,nombre,logoUrl').eq('id', id).maybeSingle(),
+      () => db.from('Comunidad').select('id,nombre').eq('id', id).maybeSingle()),
     userByEmail: (email) => result(db.from('Usuario').select('id,nombre,apellido,mail,telefono,contraseña').eq('mailNormalizado', email).maybeSingle()),
     userById: (id) => result(db.from('Usuario').select('id,nombre,apellido,mail,telefono').eq('id', id).maybeSingle()),
     memberships: (id) => result(db.from('ComunidadUsuario').select('id,idUsuario,idComunidad,aceptado,rechazado,nroSocio,foto').eq('idUsuario', id).order('id')),
