@@ -13,6 +13,7 @@ import Solicitar from './pages/Solicitar.jsx';
 import Reservas from './pages/Reservas.jsx';
 import Mercado from './pages/Mercado.jsx';
 import Noticias from './pages/Noticias.jsx';
+import Consultas from './pages/Consultas.jsx';
 import Perfil from './pages/Perfil.jsx';
 
 // Deportes
@@ -89,6 +90,8 @@ export default function App() {
     <>
     {logoutError && <p role="alert" className="error p-4">{logoutError}</p>}
     <Routes>
+      <Route path="/consultas" element={<Protected user={user}><Consultas user={user} onLogout={onLogout}/></Protected>} />
+      <Route path="/consultas/:conversationId" element={<Protected user={user}><Consultas user={user} onLogout={onLogout}/></Protected>} />
       <Route path="/noticias" element={<Protected user={user}><Noticias user={user} onLogout={onLogout}/></Protected>} />
       <Route path="/noticias/:noticiaId" element={<Protected user={user}><Noticias user={user} onLogout={onLogout}/></Protected>} />
       <Route path="/registro" element={user ? <Navigate to="/home" replace /> : <Registro />} />

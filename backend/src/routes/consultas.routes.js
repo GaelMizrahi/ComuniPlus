@@ -1,0 +1,16 @@
+import {Router} from 'express';
+import {supabase} from '../config/index.js';
+import {authMiddleware} from '../middleware/auth.js';
+import {communityMiddleware} from '../middleware/community.js';
+import {createConsultasRepository} from '../repositories/consultas.repository.js';
+import {createConsultasService} from '../services/consultas.service.js';
+import {consultasHandler} from '../controllers/consultas.controller.js';
+const router=Router(),service=createConsultasService(createConsultasRepository(supabase));
+router.use('/consultas',authMiddleware,communityMiddleware);
+router.get('/consultas/contexto',consultasHandler((r)=>service.context(r.communityMember)));
+router.get('/consultas/conversaciones',consultasHandler((r)=>service.inbox(r.communityMember,r.query.page)));
+router.post('/consultas/propia',consultasHandler((r)=>service.open(r.communityMember)));
+router.get('/consultas/conversaciones/:id/mensajes',consultasHandler((r)=>service.messages(r.communityMember,r.params.id,r.query)));
+router.post('/consultas/conversaciones/:id/mensajes',consultasHandler((r)=>service.send(r.communityMember,r.params.id,r.body),201));
+router.post('/consultas/difusiones',consultasHandler((r)=>service.broadcast(r.communityMember,r.body),201));
+export default router;

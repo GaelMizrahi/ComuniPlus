@@ -1,5 +1,8 @@
 # Mercado en el Supabase existente
 
+Para chat privado entre socios y administración y comunicados generales del club,
+consultar [CONSULTAS.md](CONSULTAS.md).
+
 Para Noticias por club, publicación de administradores y tres ejemplos por club,
 consultar [NOTICIAS.md](NOTICIAS.md).
 
