@@ -11,7 +11,7 @@ export async function findOpenMatches({ deporte, communityId }) {
     .order('fecha', { ascending: true })
     .order('horario', { ascending: true });
 
-  if (communityId) query = query.eq('idComunidad', communityId);
+  query = query.eq('idComunidad', communityId);
   if (deporte) query = query.eq('deporte', deporte);
 
   const { data = [], error } = await query;
@@ -19,11 +19,11 @@ export async function findOpenMatches({ deporte, communityId }) {
   return data;
 }
 
-export async function findMatchById(matchId) {
+export async function findMatchById(matchId, communityId) {
   const { data, error } = await supabase
     .from('FaltaJugadorPartido')
     .select(MATCH_COLUMNS)
-    .eq('id', matchId)
+    .eq('id', matchId).eq('idComunidad', communityId)
     .maybeSingle();
 
   if (error) throw error;
@@ -53,11 +53,11 @@ export async function createParticipation({ matchId, communityUserId }) {
   return data;
 }
 
-export async function updateMissingPlayers({ matchId, jugadoresFaltantes, estado }) {
+export async function updateMissingPlayers({ matchId, communityId, jugadoresFaltantes, estado }) {
   const { data, error } = await supabase
     .from('FaltaJugadorPartido')
     .update({ jugadoresFaltantes, estado })
-    .eq('id', matchId)
+    .eq('id', matchId).eq('idComunidad', communityId)
     .select(MATCH_COLUMNS)
     .single();
 

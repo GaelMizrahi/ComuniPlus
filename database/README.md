@@ -1,5 +1,8 @@
 # Mercado en el Supabase existente
 
+Para el aislamiento de canchas, deportes y transporte por club, consultar
+[AISLAMIENTO.md](AISLAMIENTO.md) y aplicar `aislamiento_clubes.sql`.
+
 Para cargar clubes con escudos y 70 socios ficticios, consultar
 [CLUBES_DEMO.md](CLUBES_DEMO.md). Los siete escudos enviados se incluyen en el frontend.
 

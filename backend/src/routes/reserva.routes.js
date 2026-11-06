@@ -1,3 +1,4 @@
+import { communityMiddleware } from '../middleware/community.js';
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import {
@@ -8,8 +9,8 @@ import {
 
 const router = Router();
 
-router.post('/reservas', authMiddleware, createReserva);
-router.get('/reservas/mias', authMiddleware, getMisReservas);
-router.delete('/reservas/:id', authMiddleware, deleteReserva);
+router.post('/reservas', authMiddleware, communityMiddleware, createReserva);
+router.get('/reservas/mias', authMiddleware, communityMiddleware, getMisReservas);
+router.delete('/reservas/:id', authMiddleware, communityMiddleware, deleteReserva);
 
 export default router;

@@ -39,7 +39,7 @@ export function mapSupabaseError(error) {
 export function shapeOpenRide(request, requester) {
   return {
     id: request.id,
-    requesterId: request.idSolicitante,
+    requesterId: requester?.id,
     requesterName: getFullName(requester),
     requesterPhone: requester?.telefono ?? null,
     origin: request.lugarDeSalida,
@@ -79,7 +79,7 @@ export function shapeReservation({ trip, request, currentUserId, requester, cond
     conductorName: getFullName(conductor),
     origin: request.lugarDeSalida,
     destination: request.lugarDeLlegada,
-    deparutureDate: request.diaSalida,
+    departureDate: request.diaSalida,
     departureTime: request.horarioDeSalida,
     seatsReserved: Number(request.espaciosSolicitados),
     requirements: normalizeRequirements(request.requisitos),

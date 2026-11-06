@@ -1,5 +1,4 @@
-import { asNumber } from '../utils/helpers.js';
-import { getAcceptedMembershipByUserId } from '../repositories/user.repository.js';
+import { positiveId } from '../utils/community.js';
 import {
   createParticipation,
   findMatchById,
@@ -22,8 +21,7 @@ function shapeMatch(match) {
   };
 }
 
-export async function getAvailableMatches(userId, deporte) {
-  const membership = await getAcceptedMembershipByUserId(asNumber(userId));
+export async function getAvailableMatches(membership, deporte) {
   const sport = normalizeSport(deporte);
   const matches = await findOpenMatches({
     deporte: sport && sport !== 'Todos' ? sport : '',
@@ -33,16 +31,15 @@ export async function getAvailableMatches(userId, deporte) {
   return matches.map(shapeMatch);
 }
 
-export async function joinMatch(userId, matchId) {
-  const parsedMatchId = asNumber(matchId);
+export async function joinMatch(membership, matchId) {
+  const parsedMatchId = positiveId(matchId);
   if (!parsedMatchId) {
     const err = new Error('Partido inválido');
     err.statusCode = 400;
     throw err;
   }
 
-  const membership = await getAcceptedMembershipByUserId(asNumber(userId));
-  const match = await findMatchById(parsedMatchId);
+  const match = await findMatchById(parsedMatchId, membership.idComunidad);
 
   if (!match || Number(match.idComunidad) !== Number(membership.idComunidad)) {
     const err = new Error('Partido no encontrado');
@@ -75,6 +72,7 @@ export async function joinMatch(userId, matchId) {
   const missing = Math.max(Number(match.jugadoresFaltantes) - 1, 0);
   const updated = await updateMissingPlayers({
     matchId: parsedMatchId,
+    communityId: membership.idComunidad,
     jugadoresFaltantes: missing,
     estado: missing === 0 ? 'completo' : 'abierto'
   });
