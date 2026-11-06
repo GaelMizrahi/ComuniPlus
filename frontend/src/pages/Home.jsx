@@ -8,9 +8,8 @@ const modules = [
   { key: 'viajes', title: 'Transporte', desc: 'Coordiná traslados con tu club', to: '/viajes', color: '#3b6cf5', icon: 'viajes' },
   { key: 'mercado', title: 'Mercado', desc: 'Comprá y vendé en tu comunidad', to: '/mercado', color: '#e8930c', icon: 'mercado' },
   { key: 'consultas', title: 'Consultas', desc: 'Preguntas y respuestas', to: null, color: '#8e99ab', icon: 'consultas' },
+  { key: 'noticias', title: 'Noticias', desc: 'Novedades y anuncios de tu club', to: '/noticias', color: '#7653ce', icon: 'noticias' },
 ];
-
-const communityAvatars = [1, 5, 8, 12, 3, 7];
 
 function ModuleIcon({ type, color }) {
   const icons = {
@@ -35,6 +34,9 @@ function ModuleIcon({ type, color }) {
         <line x1="3" y1="6" x2="21" y2="6" />
         <path d="M16 10a4 4 0 0 1-8 0" />
       </svg>
+    ),
+    noticias: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h10M7 11h10M7 15h4M7 18h10"/></svg>
     ),
     consultas: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -64,29 +66,6 @@ export default function Home({ user, onLogout }) {
         <div className="flex items-center gap-3 mt-3">
           <ClubLogo src={user.communityLogo} name={user.community} />
           <p className="text-[14px] text-text-muted font-medium">{user.community}</p>
-        </div>
-      </div>
-
-      <div className="bg-surface rounded-[18px] shadow-butter p-5 mb-6 animate-slide-up">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-[13px] font-semibold text-text-secondary">Tu comunidad</p>
-            <p className="text-[11px] text-text-muted mt-0.5 font-medium">Miembros activos</p>
-          </div>
-          <span className="text-[13px] font-bold text-accent">{communityAvatars.length}+</span>
-        </div>
-        <div className="flex items-center">
-          <div className="flex -space-x-2.5">
-            {communityAvatars.map((id) => (
-              <img
-                key={id}
-                src={`https://i.pravatar.cc/64?u=avatar${id}`}
-                alt=""
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-surface"
-              />
-            ))}
-          </div>
-          <p className="text-[12px] text-text-muted font-medium ml-3">+120 vecinos</p>
         </div>
       </div>
 

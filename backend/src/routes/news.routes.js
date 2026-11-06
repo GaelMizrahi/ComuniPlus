@@ -1,0 +1,15 @@
+import { Router } from 'express';
+import { supabase } from '../config/index.js';
+import { authMiddleware } from '../middleware/auth.js';
+import { communityMiddleware } from '../middleware/community.js';
+import { createNewsRepository } from '../repositories/news.repository.js';
+import { createNewsService } from '../services/news.service.js';
+import { newsHandler } from '../controllers/news.controller.js';
+const router = Router();
+const service = createNewsService(createNewsRepository(supabase));
+router.use('/noticias', authMiddleware, communityMiddleware);
+router.get('/noticias', newsHandler((r) => service.list(r.communityMember, r.query.page)));
+router.get('/noticias/:id', newsHandler((r) => service.detail(r.communityMember, r.params.id)));
+router.post('/noticias', newsHandler((r) => service.publish(r.communityMember, r.body), 201));
+router.delete('/noticias/:id', newsHandler((r) => service.remove(r.communityMember, r.params.id)));
+export default router;
