@@ -22,6 +22,9 @@ test('all club modules isolate the selected membership, including forged IDs and
   Partido:[{id:810,idComunidadUsuario:102,titulo:'Partido A',estado:1,jugadoresNecesarios:4},{id:820,idComunidadUsuario:202,titulo:'Partido B',estado:1,jugadoresNecesarios:4},{id:821,idComunidadUsuario:201,titulo:'Propio B',estado:1,jugadoresNecesarios:4}],PartidoJugador:[],
   FaltaJugadorPartido:[{id:920,idComunidad:1,idCreador:2,estado:'abierto',jugadoresFaltantes:3},{id:930,idComunidad:2,idCreador:3,estado:'abierto',jugadoresFaltantes:3}],FaltaJugadorParticipante:[]
  };
+ db.Administrador=[{id:1,idComunidadUsuario:101,idComunidad:1},{id:2,idComunidadUsuario:201,idComunidad:2}];
+ db.Noticia=[{id:901,idComunidad:1,titulo:'Noticia A',texto:'Contenido del club A para sus socios',imagenUrl:'/club-logos/ferro.jpg',imagenPath:null,eliminadoEn:null,esDemo:true},
+ {id:902,idComunidad:2,titulo:'Noticia B',texto:'Contenido del club B para sus socios',imagenUrl:'/club-logos/river-plate.png',imagenPath:null,eliminadoEn:null,esDemo:true}];
  for(const row of db.solicitudViaje)Object.assign(row,{espaciosSolicitados:2,horarioDeSalida:'12:00',diaSalida:'2099-01-01',lugarDeSalida:`Club ${row.idComunidad}`,lugarDeLlegada:'Centro'});
  const records=[];
  const get=(row,key)=>key.split('.').reduce((value,part)=>value?.[part],row);
@@ -32,13 +35,32 @@ test('all club modules isolate the selected membership, including forged IDs and
   if(value.startsWith('neq.'))return String(target)!==value.slice(4);
   if(value.startsWith('in.('))return value.slice(4,-1).split(',').includes(String(target));
   if(value.startsWith('gt.'))return Number(target)>Number(value.slice(3));
+  if(value==='is.null')return target==null;
   return true;
  });
  const stub=createServer(async(req,res)=>{
   const url=new URL(req.url,'http://stub'),table=url.pathname.split('/').at(-1);
   const chunks=[];for await(const chunk of req)chunks.push(chunk);
-  const body=chunks.length?JSON.parse(Buffer.concat(chunks)):null;
+  const body=chunks.length&&req.headers['content-type']?.includes('application/json')?JSON.parse(Buffer.concat(chunks)):null;
   records.push({table,method:req.method,query:url.searchParams,body});
+  if(url.pathname.startsWith('/storage/v1/')){
+   const value=url.pathname.includes('/sign/')?{signedURL:'/object/sign/noticias/image.png?token=temporary'}:{Key:'noticias/uploaded'};
+   res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(value));return;
+  }
+  if(url.pathname.includes('/rpc/')){
+   const actor=db.ComunidadUsuario.find((m)=>m.id===body.p_id_actor&&m.aceptado);
+   const admin=actor&&db.Administrador.some((a)=>a.idComunidadUsuario===actor.id&&a.idComunidad===actor.idComunidad);
+   let value,status=200;
+   if(!admin){status=403;value={code:'42501',message:'No autorizado'};}
+   else if(table==='publicarNoticiaClub'){
+    const row={id:2000+db.Noticia.length,idComunidad:actor.idComunidad,idAutor:actor.id,titulo:body.p_titulo,texto:body.p_texto,imagenPath:body.p_imagen_path,imagenUrl:null,eliminadoEn:null};db.Noticia.push(row);value={id:row.id};
+   }else{
+    const row=db.Noticia.find((n)=>n.id===body.p_id_noticia&&n.idComunidad===actor.idComunidad&&!n.eliminadoEn);
+    if(!row){status=404;value={code:'P0002',message:'Noticia no encontrada'};}
+    else{row.eliminadoEn=new Date().toISOString();value={imagenPath:row.imagenPath};}
+   }
+   res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));return;
+  }
   let rows=db[table]??[];
   const court=(id)=>db.Cancha.find((row)=>row.id===id);
   const reserve=(id)=>{const row=db.Reserva.find((r)=>r.id===id);return row&&{...row,Cancha:court(row.idCancha)};};
@@ -119,11 +141,26 @@ test('all club modules isolate the selected membership, including forged IDs and
   assert.equal((await request('/reservations/trip-520/cancel',{method:'POST'})).status,200);assert.ok(db.Viaje.some((r)=>r.id===510));
   assert.equal((await request('/rides/422/cancel',{method:'POST'})).status,200);assert.ok(db.solicitudViaje.some((r)=>r.id===412));
  });
+ await t.test('news lists and private images are scoped; only the current club administrator can publish/delete',async()=>{
+  const photo={mimeType:'image/png',data:Buffer.from([137,80,78,71,13,10,26,10,1]).toString('base64')};
+  const body={title:'Nueva cancha del club B',text:'Se publica una novedad para los socios de nuestro club.',photo,idComunidad:1,idAutor:101,isAdmin:true};
+  const member={idUsuario:3,idComunidad:2,idComunidadUsuario:202};
+  assert.deepEqual((await json('/noticias')).items.map((n)=>n.id),[902]);
+  assert.equal((await request('/noticias/901')).status,404);
+  assert.equal((await request('/noticias',{actor:member,method:'POST',body})).status,403);
+  assert.equal((await request('/noticias/902',{actor:member,method:'DELETE'})).status,403);
+  const created=await request('/noticias',{method:'POST',body});assert.equal(created.status,201,await created.clone().text());const {id}=await created.json();
+  const row=db.Noticia.find((n)=>n.id===id);assert.equal(row.idComunidad,2);assert.equal(row.idAutor,201);assert.match(row.imagenPath,/^2\/201\//);
+  const detail=await json(`/noticias/${id}`);assert.match(detail.item.image,/\/storage\/v1\/object\/sign\/noticias\//);assert.ok(!detail.item.imagenPath);
+  assert.equal((await request(`/noticias/${id}`,{club:1,method:'DELETE'})).status,404);
+  assert.equal((await request(`/noticias/${id}`,{method:'DELETE'})).status,200);assert.equal((await request(`/noticias/${id}`)).status,404);
+  assert.equal((await request('/noticias',{method:'POST',body:{...body,photo:null}})).status,400);
+ });
  await t.test('forged/revoked selected memberships fail across all modules before any resource access',async()=>{
   for(const actor of [{...claims(2),idComunidad:1},claims(2)]){
    if(actor.idComunidad===2)db.ComunidadUsuario.find((r)=>r.id===201).aceptado=false;
    const before=records.length;
-   for(const path of ['/deportes','/reservas/mias','/partidos','/falta-jugador/partidos','/rides','/reservations'])assert.equal((await request(path,{actor})).status,403,path);
+   for(const path of ['/deportes','/reservas/mias','/partidos','/falta-jugador/partidos','/rides','/reservations','/noticias'])assert.equal((await request(path,{actor})).status,403,path);
    assert.ok(records.slice(before).every((r)=>r.table==='ComunidadUsuario'));
   }
  });

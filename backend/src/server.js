@@ -23,6 +23,7 @@ app.use((_req, res, next) => {
 app.use('/api', browserSecurity);
 app.use(cors({ origin: (origin, done) => done(null, Boolean(origin && allowedOrigins.has(origin))), credentials: true }));
 app.use('/api/mercado', express.json({ limit: '7mb' }));
+app.use('/api/noticias', express.json({ limit: '7mb' }));
 app.use(express.json());
 app.use(router);
 app.use('/api', (_req, res) => res.status(404).json({ message: 'Ruta no encontrada' }));

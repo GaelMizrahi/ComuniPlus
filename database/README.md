@@ -1,5 +1,8 @@
 # Mercado en el Supabase existente
 
+Para Noticias por club, publicación de administradores y tres ejemplos por club,
+consultar [NOTICIAS.md](NOTICIAS.md).
+
 Para el aislamiento de canchas, deportes y transporte por club, consultar
 [AISLAMIENTO.md](AISLAMIENTO.md) y aplicar `aislamiento_clubes.sql`.
 
