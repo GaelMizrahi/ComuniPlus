@@ -1,3 +1,4 @@
+import { communityMiddleware } from '../middleware/community.js';
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
 import {
@@ -9,9 +10,9 @@ import {
 
 const router = Router();
 
-router.get('/rides', authMiddleware, getRides);
-router.post('/rides/request', authMiddleware, requestRide);
-router.post('/rides/:rideId/offer', authMiddleware, offerRide);
-router.post('/rides/:rideId/cancel', authMiddleware, cancelRide);
+router.get('/rides', authMiddleware, communityMiddleware, getRides);
+router.post('/rides/request', authMiddleware, communityMiddleware, requestRide);
+router.post('/rides/:rideId/offer', authMiddleware, communityMiddleware, offerRide);
+router.post('/rides/:rideId/cancel', authMiddleware, communityMiddleware, cancelRide);
 
 export default router;

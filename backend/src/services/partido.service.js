@@ -1,5 +1,5 @@
 import { asNumber } from '../utils/helpers.js';
-import { getAcceptedMembershipByUserId } from '../repositories/user.repository.js';
+import { positiveId, notFound } from '../utils/community.js';
 
 import {
   createPartido,
@@ -36,8 +36,8 @@ function shapePartido(partido, jugadores = [], membershipId = null) {
   };
 }
 
-export async function crearPartido(userId, body) {
-  const currentUserId = asNumber(userId);
+export async function crearPartido(membership, body) {
+  const currentUserId = membership.idUsuario;
 
   const deporte = String(body.deporte ?? '').trim();
   const titulo = String(body.titulo ?? '').trim();
@@ -53,7 +53,6 @@ export async function crearPartido(userId, body) {
     throw err;
   }
 
-  const membership = await getAcceptedMembershipByUserId(currentUserId);
 
   return createPartido({
     idComunidadUsuario: membership.id,
@@ -67,9 +66,8 @@ export async function crearPartido(userId, body) {
   });
 }
 
-export async function listarPartidos(userId) {
-  const membership = await getAcceptedMembershipByUserId(asNumber(userId));
-  const partidos = await findPartidosActivos();
+export async function listarPartidos(membership) {
+  const partidos = await findPartidosActivos(membership.idComunidad);
 
   const partidosConJugadores = await Promise.all(
     partidos.map(async (partido) => {
@@ -81,9 +79,9 @@ export async function listarPartidos(userId) {
   return partidosConJugadores;
 }
 
-export async function unirsePartido(userId, partidoId) {
-  const currentUserId = asNumber(userId);
-  const parsedPartidoId = asNumber(partidoId);
+export async function unirsePartido(membership, partidoId) {
+  const currentUserId = membership.idUsuario;
+  const parsedPartidoId = positiveId(partidoId);
 
   if (!currentUserId || !parsedPartidoId) {
     const err = new Error('Partido inválido');
@@ -91,8 +89,7 @@ export async function unirsePartido(userId, partidoId) {
     throw err;
   }
 
-  const membership = await getAcceptedMembershipByUserId(currentUserId);
-  const partido = await findPartidoById(parsedPartidoId);
+  const partido = await findPartidoById(parsedPartidoId, membership.idComunidad);
 
   if (!partido || Number(partido.estado) !== 1) {
     const err = new Error('Partido no encontrado');
@@ -134,8 +131,8 @@ export async function unirsePartido(userId, partidoId) {
   return shapePartido(partido, jugadoresActualizados, membership.id);
 }
 
-export async function eliminarPartido(id) {
-  const partidoId = asNumber(id);
+export async function eliminarPartido(membership, id) {
+  const partidoId = positiveId(id);
 
   if (!partidoId) {
     const err = new Error('Partido inválido');
@@ -143,5 +140,7 @@ export async function eliminarPartido(id) {
     throw err;
   }
 
-  return cancelarPartido(partidoId);
+  const partido = await findPartidoById(partidoId, membership.idComunidad);
+  if (!partido || Number(partido.idComunidadUsuario) !== Number(membership.id)) notFound('Partido no encontrado');
+  return cancelarPartido(partidoId, membership.id);
 }

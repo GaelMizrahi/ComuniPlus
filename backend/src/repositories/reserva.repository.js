@@ -12,7 +12,7 @@ const RESERVATION_WITH_COURT_SELECT = `
   cantidadJugadores,
   estado,
   fechaDeAlta,
-  Cancha (
+  Cancha!inner (
     id,
     numero,
     lugar,
@@ -96,18 +96,19 @@ export async function findReservationForCourtDateTime({
   return data;
 }
 
-export async function findUserReservations(communityUserId) {
+export async function findUserReservations(communityUserId, communityId) {
   const { data = [], error } = await supabase
     .from('ComunidadUsuarioReserva')
     .select(`
       id,
       idComunidadUsuario,
       idReserva,
-      Reserva (
+      Reserva!inner (
         ${RESERVATION_WITH_COURT_SELECT}
       )
     `)
     .eq('idComunidadUsuario', communityUserId)
+    .eq('Reserva.Cancha.idComunidad', communityId)
     .order('id', { ascending: false });
 
   if (error) {
@@ -122,7 +123,8 @@ export async function findUserReservations(communityUserId) {
 }
 export async function findLinkedReservationById(
   reservationId,
-  communityUserId
+  communityUserId,
+  communityId
 ) {
   const { data, error } = await supabase
     .from('ComunidadUsuarioReserva')
@@ -130,12 +132,13 @@ export async function findLinkedReservationById(
       id,
       idComunidadUsuario,
       idReserva,
-      Reserva (
+      Reserva!inner (
         ${RESERVATION_WITH_COURT_SELECT}
       )
     `)
     .eq('idReserva', reservationId)
     .eq('idComunidadUsuario', communityUserId)
+    .eq('Reserva.Cancha.idComunidad', communityId)
     .limit(1)
     .maybeSingle();
 
@@ -150,11 +153,11 @@ export async function findLinkedReservationById(
   return data;
 }
 
-export async function cancelReservationById(reservationId) {
+export async function cancelReservationById(reservationId, courtId) {
   const { error } = await supabase
     .from('Reserva')
     .update({ estado: 0 })
-    .eq('id', reservationId);
+    .eq('id', reservationId).eq('idCancha', courtId);
 
   if (error) {
     console.error('===== ERROR CANCEL RESERVATION =====');

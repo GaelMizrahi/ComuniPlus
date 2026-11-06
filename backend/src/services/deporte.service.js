@@ -1,4 +1,4 @@
-import { asNumber } from '../utils/helpers.js';
+import { positiveId } from '../utils/community.js';
 import {
   findCourts,
   findCourtById,
@@ -55,8 +55,8 @@ export function getSports() {
   return SPORTS;
 }
 
-export async function getCourts(sport) {
-  const courts = await findCourts();
+export async function getCourts(member, sport) {
+  const courts = await findCourts(member.idComunidad);
   const normalizedSport = normalize(sport);
 
   return courts
@@ -68,8 +68,8 @@ export async function getCourts(sport) {
     .map(shapeCourt);
 }
 
-export async function getCourt(courtId) {
-  const parsedCourtId = asNumber(courtId);
+export async function getCourt(member, courtId) {
+  const parsedCourtId = positiveId(courtId);
 
   if (!parsedCourtId) {
     const err = new Error('Cancha inválida');
@@ -77,7 +77,7 @@ export async function getCourt(courtId) {
     throw err;
   }
 
-  const court = await findCourtById(parsedCourtId);
+  const court = await findCourtById(parsedCourtId, member.idComunidad);
 
   if (!court) {
     const err = new Error('Cancha no encontrada');
@@ -88,18 +88,19 @@ export async function getCourt(courtId) {
   return court;
 }
 
-export async function getCourtTimeSlots(courtId, date) {
+export async function getCourtTimeSlots(member, courtId, date) {
   if (!date) {
     const err = new Error('La fecha es obligatoria');
     err.statusCode = 400;
     throw err;
   }
 
-  await getCourt(courtId);
+  await getCourt(member, courtId);
 
   const reservations = await findReservationsByCourtAndDate(
-    asNumber(courtId),
-    date
+    positiveId(courtId),
+    date,
+    member.idComunidad
   );
 
   const occupied = new Set(

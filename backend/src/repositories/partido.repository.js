@@ -1,3 +1,4 @@
+import { communityMembers } from './user.repository.js';
 import { supabase } from '../config/index.js';
 
 const PARTIDO_COLUMNS =
@@ -39,11 +40,13 @@ export async function createPartido({
   return data;
 }
 
-export async function findPartidosActivos() {
+export async function findPartidosActivos(communityId) {
+  const ids = (await communityMembers(communityId)).map((row) => row.id);
+  if (!ids.length) return [];
   const { data = [], error } = await supabase
     .from('Partido')
     .select(PARTIDO_COLUMNS)
-    .eq('estado', 1)
+    .eq('estado', 1).in('idComunidadUsuario', ids)
     .order('dia', { ascending: true })
     .order('horario', { ascending: true });
 
@@ -56,11 +59,13 @@ export async function findPartidosActivos() {
   return data;
 }
 
-export async function findPartidoById(id) {
+export async function findPartidoById(id, communityId) {
+  const ids = (await communityMembers(communityId)).map((row) => row.id);
+  if (!ids.length) return null;
   const { data, error } = await supabase
     .from('Partido')
     .select(PARTIDO_COLUMNS)
-    .eq('id', id)
+    .eq('id', id).in('idComunidadUsuario', ids)
     .maybeSingle();
 
   if (error) {
@@ -107,11 +112,11 @@ export async function unirseAPartido({ idPartido, idComunidadUsuario }) {
   return data;
 }
 
-export async function cancelarPartido(id) {
+export async function cancelarPartido(id, ownerId) {
   const { data, error } = await supabase
     .from('Partido')
     .update({ estado: 0 })
-    .eq('id', id)
+    .eq('id', id).eq('idComunidadUsuario', ownerId)
     .select(PARTIDO_COLUMNS)
     .single();
 

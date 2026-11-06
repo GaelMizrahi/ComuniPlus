@@ -1,3 +1,4 @@
+import { positiveId } from '../utils/community.js';
 import { supabase } from '../config/index.js';
 import { asNumber, mapSupabaseError } from '../utils/helpers.js';
 
@@ -70,4 +71,21 @@ export async function countRows(table) {
   return error
     ? { table, ok: false, error: mapSupabaseError(error) }
     : { table, ok: true, count };
+}
+
+// Identities referenced by legacy tables are membership IDs, not Usuario IDs.
+export async function communityMembers(communityId) {
+  const rows = [];
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await supabase.from('ComunidadUsuario')
+      .select('id,idUsuario,idComunidad').eq('idComunidad', positiveId(communityId)).order('id').range(offset, offset + 499);
+    if (error) throw error;
+    rows.push(...data); if (data.length < 500) return rows;
+  }
+}
+export async function memberUsers(communityId, memberIds) {
+  const wanted = new Set(memberIds.map(Number));
+  const members = (await communityMembers(communityId)).filter((row) => wanted.has(Number(row.id)));
+  const users = await getUsersByIds(members.map((row) => row.idUsuario));
+  return Object.fromEntries(members.map((row) => [row.id, users[row.idUsuario]]));
 }

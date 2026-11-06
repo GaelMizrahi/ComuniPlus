@@ -1,108 +1,33 @@
-import { asNumber, shapeReservation } from '../utils/helpers.js';
-import { getUsersByIds, getAcceptedMembershipByUserId } from '../repositories/user.repository.js';
-import {
-  getRequestById,
-  findPassengerRequests,
-  findTripsByRequestIds,
-  findDriverTrips,
-  findRequestsByIds,
-  findTripById,
-  deleteCommunityTripsByTripId,
-  deleteTrip,
-  deleteRequest
-} from '../repositories/ride.repository.js';
+import { shapeReservation } from '../utils/helpers.js';
+import { positiveId, notFound } from '../utils/community.js';
+import { memberUsers } from '../repositories/user.repository.js';
+import * as repo from '../repositories/ride.repository.js';
 
-export async function getReservations(userId) {
-  const currentUserId = asNumber(userId);
-  if (!currentUserId) {
-    const err = new Error('Falta userId');
-    err.statusCode = 400;
-    throw err;
-  }
-
-  await getAcceptedMembershipByUserId(currentUserId);
-
-  const passengerRequests = await findPassengerRequests(currentUserId);
-  const passengerRequestIds = passengerRequests.map((r) => r.id);
-  const passengerTrips = await findTripsByRequestIds(passengerRequestIds);
-  const driverTrips = await findDriverTrips(currentUserId);
-
-  const driverRequestIds = driverTrips.map((trip) => trip.idSolicitudViaje).filter(Boolean);
-  const driverRequests = await findRequestsByIds(driverRequestIds);
-
-  const requestsById = Object.fromEntries(
-    [...passengerRequests, ...driverRequests].map((r) => [r.id, r])
-  );
-  const allTrips = [...passengerTrips, ...driverTrips];
-  const usersById = await getUsersByIds([
-    currentUserId,
-    ...allTrips.map((t) => t.idConductor),
-    ...Object.values(requestsById).map((r) => r.idSolicitante)
-  ]);
-
-  const seen = new Set();
-  return allTrips
-    .filter((trip) => {
-      if (seen.has(trip.id)) return false;
-      seen.add(trip.id);
-      return Boolean(requestsById[trip.idSolicitudViaje]);
-    })
-    .map((trip) => {
-      const request = requestsById[trip.idSolicitudViaje];
-      return shapeReservation({
-        trip,
-        request,
-        currentUserId,
-        requester: usersById[request.idSolicitante],
-        conductor: usersById[trip.idConductor]
-      });
-    });
+export async function getReservations(member) {
+  const passengerRequests = await repo.findPassengerRequests(member.id, member.idComunidad);
+  const passengerTrips = await repo.findTripsByRequestIds(passengerRequests.map((row) => row.id), member.idComunidad);
+  const driverTrips = await repo.findDriverTrips(member.id, member.idComunidad);
+  const driverRequests = await repo.findRequestsByIds(driverTrips.map((row) => row.idSolicitudViaje), member.idComunidad);
+  const requests = Object.fromEntries([...passengerRequests, ...driverRequests].map((row) => [row.id, row]));
+  const trips = [...new Map([...passengerTrips, ...driverTrips].map((row) => [row.id, row])).values()];
+  const users = await memberUsers(member.idComunidad, [member.id, ...trips.map((row) => row.idConductor), ...Object.values(requests).map((row) => row.idSolicitante)]);
+  return trips.filter((trip) => requests[trip.idSolicitudViaje] && users[trip.idConductor] && users[requests[trip.idSolicitudViaje].idSolicitante])
+    .map((trip) => shapeReservation({ trip, request: requests[trip.idSolicitudViaje], currentUserId: member.id,
+      requester: users[requests[trip.idSolicitudViaje].idSolicitante], conductor: users[trip.idConductor] }));
 }
-
-export async function completeReservation(userId, reservationId) {
-  const tripId = asNumber(String(reservationId).replace('trip-', '').replace('res-', ''));
-  const trip = await findTripById(tripId);
-  if (!trip) {
-    const err = new Error('Reserva no encontrada');
-    err.statusCode = 404;
-    throw err;
-  }
-
-  const request = await getRequestById(trip.idSolicitudViaje);
-  const currentUserId = asNumber(userId);
-  if (!request || (Number(request.idSolicitante) !== currentUserId && Number(trip.idConductor) !== currentUserId)) {
-    const err = new Error('No tenés permiso para modificar esta reserva');
-    err.statusCode = 403;
-    throw err;
-  }
-
-  await deleteCommunityTripsByTripId(trip.id);
-  const deleteTripError = await deleteTrip(trip.id);
-  if (deleteTripError) throw deleteTripError;
-
-  const deleteRequestError = await deleteRequest(trip.idSolicitudViaje);
-  if (deleteRequestError) throw deleteRequestError;
+async function ownedTrip(member, reservationId) {
+  const id = positiveId(String(reservationId).replace(/^(trip|res)-/, ''));
+  const trip = await repo.findTripById(id, member.idComunidad);
+  const request = trip && await repo.getRequestById(trip.idSolicitudViaje, member.idComunidad);
+  if (!request || (Number(request.idSolicitante) !== Number(member.id) && Number(trip.idConductor) !== Number(member.id))) notFound('Reserva no encontrada');
+  return { trip, request };
 }
-
-export async function cancelReservation(userId, reservationId) {
-  const tripId = asNumber(String(reservationId).replace('trip-', '').replace('res-', ''));
-  const currentUserId = asNumber(userId);
-
-  const trip = await findTripById(tripId);
-  if (!trip) {
-    const err = new Error('Reserva no encontrada');
-    err.statusCode = 404;
-    throw err;
-  }
-
-  const request = await getRequestById(trip.idSolicitudViaje);
-  if (!request || (Number(request.idSolicitante) !== currentUserId && Number(trip.idConductor) !== currentUserId)) {
-    const err = new Error('No tenés permiso para modificar esta reserva');
-    err.statusCode = 403;
-    throw err;
-  }
-
-  await deleteCommunityTripsByTripId(tripId);
-  const error = await deleteTrip(tripId);
-  if (error) throw error;
+export async function completeReservation(member, reservationId) {
+  const { trip, request } = await ownedTrip(member, reservationId);
+  await repo.deleteTrip(trip.id, member.idComunidad);
+  await repo.deleteRequest(request.id, member.idComunidad, request.idSolicitante);
+}
+export async function cancelReservation(member, reservationId) {
+  const { trip } = await ownedTrip(member, reservationId);
+  await repo.deleteTrip(trip.id, member.idComunidad);
 }

@@ -1,10 +1,9 @@
 import { asNumber } from '../utils/helpers.js';
-import { getAcceptedMembershipByUserId } from '../repositories/user.repository.js';
+import { positiveId } from '../utils/community.js';
 
 import {
   getCourt,
-  shapeCourt,
-  getCourtTimeSlots
+  shapeCourt
 } from './deporte.service.js';
 
 import {
@@ -39,8 +38,8 @@ function reservationDateTime(date, time) {
   return new Date(`${date}T${String(time).slice(0, 5)}:00`);
 }
 
-export async function createSportReservation(body, currentUserId) {
-  const courtId = asNumber(body.courtId ?? body.idCancha);
+export async function createSportReservation(body, membership) {
+  const courtId = positiveId(body.courtId ?? body.idCancha);
   const cantidadJugadores = asNumber(
     body.cantidadJugadores ?? body.players ?? body.jugadores
   );
@@ -48,14 +47,13 @@ export async function createSportReservation(body, currentUserId) {
   const date = String(body.date ?? body.fecha ?? '').trim();
   const time = String(body.time ?? body.horario ?? '').slice(0, 5);
 
-  if (!currentUserId || !courtId || !date || !time) {
+  if (!membership || !courtId || !date || !time) {
     const err = new Error('Faltan campos obligatorios');
     err.statusCode = 400;
     throw err;
   }
 
-  const membership = await getAcceptedMembershipByUserId(currentUserId);
-  const court = await getCourt(courtId);
+  const court = await getCourt(membership, courtId);
 
   const sport = body.sport || body.deporte || court.deporte;
 
@@ -90,18 +88,17 @@ export async function createSportReservation(body, currentUserId) {
   };
 }
 
-export async function getMySportReservations(userId) {
-  const membership = await getAcceptedMembershipByUserId(asNumber(userId));
+export async function getMySportReservations(membership) {
 
-  const rows = await findUserReservations(membership.id);
+  const rows = await findUserReservations(membership.id, membership.idComunidad);
 
   return rows
     .map(shapeSportReservation)
     .filter((reservation) => reservation.id);
 }
 
-export async function cancelSportReservation(userId, reservationId) {
-  const parsedReservationId = asNumber(reservationId);
+export async function cancelSportReservation(membership, reservationId) {
+  const parsedReservationId = positiveId(reservationId);
 
   if (!parsedReservationId) {
     const err = new Error('Reserva inválida');
@@ -109,11 +106,11 @@ export async function cancelSportReservation(userId, reservationId) {
     throw err;
   }
 
-  const membership = await getAcceptedMembershipByUserId(asNumber(userId));
 
   const linked = await findLinkedReservationById(
     parsedReservationId,
-    membership.id
+    membership.id,
+    membership.idComunidad
   );
 
   if (!linked?.Reserva) {
@@ -142,7 +139,7 @@ export async function cancelSportReservation(userId, reservationId) {
     throw err;
   }
 
-  await cancelReservationById(parsedReservationId);
+  await cancelReservationById(parsedReservationId, reservation.idCancha);
 
   return { ok: true };
 }

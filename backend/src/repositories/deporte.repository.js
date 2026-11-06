@@ -20,10 +20,11 @@ const RESERVATION_COLUMNS = `
   fechaDeAlta
 `;
 
-export async function findCourts() {
+export async function findCourts(communityId) {
   const { data = [], error } = await supabase
     .from('Cancha')
     .select(COURT_COLUMNS)
+    .eq('idComunidad', communityId)
     .order('numero', { ascending: true });
 
   if (error) {
@@ -41,10 +42,11 @@ export async function findCourts() {
   }));
 }
 
-export async function findCourtById(courtId) {
+export async function findCourtById(courtId, communityId) {
   const { data, error } = await supabase
     .from('Cancha')
     .select(COURT_COLUMNS)
+    .eq('idComunidad', communityId)
     .eq('id', courtId)
     .maybeSingle();
 
@@ -67,10 +69,11 @@ export async function findCourtById(courtId) {
   };
 }
 
-export async function findReservationsByCourtAndDate(courtId, date) {
+export async function findReservationsByCourtAndDate(courtId, date, communityId) {
   const { data = [], error } = await supabase
     .from('Reserva')
-    .select(RESERVATION_COLUMNS)
+    .select(`${RESERVATION_COLUMNS}, Cancha!inner(idComunidad)`)
+    .eq('Cancha.idComunidad', communityId)
     .eq('idCancha', courtId)
     .eq('dia', date)
     .neq('estado', 0);
