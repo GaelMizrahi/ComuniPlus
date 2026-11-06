@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout.jsx';
+import ClubLogo from '../components/ui/ClubLogo.jsx';
 
 const modules = [
   { key: 'deportes', title: 'Deportes', desc: 'Reservá canchas y encontrá jugadores', to: '/deportes', color: '#0ea472', icon: 'deportes' },
@@ -60,7 +61,10 @@ export default function Home({ user, onLogout }) {
         <h1 className="text-[28px] font-extrabold tracking-[-0.03em] text-text">
           Hola, {firstName}
         </h1>
-        <p className="text-[14px] text-text-muted mt-1 font-medium">{user.community}</p>
+        <div className="flex items-center gap-3 mt-3">
+          <ClubLogo src={user.communityLogo} name={user.community} />
+          <p className="text-[14px] text-text-muted font-medium">{user.community}</p>
+        </div>
       </div>
 
       <div className="bg-surface rounded-[18px] shadow-butter p-5 mb-6 animate-slide-up">

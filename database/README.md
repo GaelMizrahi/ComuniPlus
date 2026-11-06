@@ -1,5 +1,8 @@
 # Mercado en el Supabase existente
 
+Para cargar clubes con escudos y 70 socios ficticios, consultar
+[CLUBES_DEMO.md](CLUBES_DEMO.md). Los siete escudos enviados se incluyen en el frontend.
+
 Para el registro de usuarios y aprobación de acceso por administradores, consultar
 [REGISTRO.md](REGISTRO.md) y aplicar `registro_migration.sql`.
 

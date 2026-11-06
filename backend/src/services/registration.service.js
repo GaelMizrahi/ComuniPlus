@@ -99,7 +99,7 @@ export function createLoginService(repo, { signToken, hash = hashPassword, verif
     return {
       ok: true, message: 'Login correcto', token: signToken(payload),
       user: { ...payload, id: user.id, email: user.mail, fullName: getFullName(user), communityId: membership.idComunidad,
-        comunidadUsuarioId: membership.id, community: community.nombre, foto: membership.foto ?? null,
+        comunidadUsuarioId: membership.id, community: community.nombre, communityLogo: community.logoUrl ?? null, foto: membership.foto ?? null,
         isAdmin: await repo.isAdmin(membership) }
     };
   };
@@ -117,7 +117,7 @@ export function createSessionService(repo) {
     return {
       id: user.id, idUsuario: user.id, nombre: user.nombre, apellido: user.apellido,
       mail: user.mail, email: user.mail, telefono: user.telefono, fullName: getFullName(user),
-      idComunidad: membership.idComunidad, communityId: membership.idComunidad, community: community.nombre,
+      idComunidad: membership.idComunidad, communityId: membership.idComunidad, community: community.nombre, communityLogo: community.logoUrl ?? null,
       idComunidadUsuario: membership.id, comunidadUsuarioId: membership.id, nroSocio: membership.nroSocio,
       foto: membership.foto ?? null, isAdmin: await repo.isAdmin(membership)
     };
