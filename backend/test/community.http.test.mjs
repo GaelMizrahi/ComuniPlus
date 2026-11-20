@@ -25,6 +25,9 @@ test('all club modules isolate the selected membership, including forged IDs and
  db.Administrador=[{id:1,idComunidadUsuario:101,idComunidad:1},{id:2,idComunidadUsuario:201,idComunidad:2}];
  db.Noticia=[{id:901,idComunidad:1,titulo:'Noticia A',texto:'Contenido del club A para sus socios',imagenUrl:'/club-logos/ferro.jpg',imagenPath:null,eliminadoEn:null,esDemo:true},
  {id:902,idComunidad:2,titulo:'Noticia B',texto:'Contenido del club B para sus socios',imagenUrl:'/club-logos/river-plate.png',imagenPath:null,eliminadoEn:null,esDemo:true}];
+ db.ConsultaConversacion=[{id:2001,idComunidad:1,idComunidadUsuario:102},{id:2002,idComunidad:2,idComunidadUsuario:202},{id:2003,idComunidad:2,idComunidadUsuario:201}];
+ db.ConsultaMensaje=[{id:3001,idConversacion:2001,idRemitente:102,texto:'Privado A',esAdmin:false},{id:3002,idConversacion:2002,idRemitente:202,texto:'Privado B',esAdmin:false}];
+ db.ConsultaDifusion=[];
  for(const row of db.solicitudViaje)Object.assign(row,{espaciosSolicitados:2,horarioDeSalida:'12:00',diaSalida:'2099-01-01',lugarDeSalida:`Club ${row.idComunidad}`,lugarDeLlegada:'Centro'});
  const records=[];
  const get=(row,key)=>key.split('.').reduce((value,part)=>value?.[part],row);
@@ -35,6 +38,7 @@ test('all club modules isolate the selected membership, including forged IDs and
   if(value.startsWith('neq.'))return String(target)!==value.slice(4);
   if(value.startsWith('in.('))return value.slice(4,-1).split(',').includes(String(target));
   if(value.startsWith('gt.'))return Number(target)>Number(value.slice(3));
+  if(value.startsWith('lt.'))return Number(target)<Number(value.slice(3));
   if(value==='is.null')return target==null;
   return true;
  });
@@ -48,10 +52,30 @@ test('all club modules isolate the selected membership, including forged IDs and
    res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(value));return;
   }
   if(url.pathname.includes('/rpc/')){
-   const actor=db.ComunidadUsuario.find((m)=>m.id===body.p_id_actor&&m.aceptado);
+   const actor=db.ComunidadUsuario.find((m)=>m.id===(body.p_id_actor??body.p_actor)&&m.aceptado);
    const admin=actor&&db.Administrador.some((a)=>a.idComunidadUsuario===actor.id&&a.idComunidad===actor.idComunidad);
    let value,status=200;
-   if(!admin){status=403;value={code:'42501',message:'No autorizado'};}
+   if(['abrirConsultaClub','enviarConsultaClub','difundirConsultaClub'].includes(table)){
+    const open=(member)=>{
+     let row=db.ConsultaConversacion.find((c)=>c.idComunidadUsuario===member.id);
+     if(!row){row={id:2000+db.ConsultaConversacion.length+1,idComunidad:member.idComunidad,idComunidadUsuario:member.id};db.ConsultaConversacion.push(row);}return row;
+    };
+    const message=(conv,extra={})=>{
+     const row={id:3000+db.ConsultaMensaje.length+1,idConversacion:conv.id,idRemitente:actor.id,texto:body.p_texto,esAdmin:admin,creadoEn:new Date().toISOString(),...extra};db.ConsultaMensaje.push(row);return row;
+    };
+    if(!actor){status=403;value={code:'42501',message:'No autorizado'};}
+    else if(table==='abrirConsultaClub')value={id:open(actor).id};
+    else if(table==='enviarConsultaClub'){
+     const conv=db.ConsultaConversacion.find((c)=>c.id===body.p_conversacion&&c.idComunidad===actor.idComunidad&&(c.idComunidadUsuario===actor.id||admin));
+     if(!conv){status=404;value={code:'P0002',message:'Conversación no encontrada'};}
+     else value=message(conv,{idCliente:body.p_id_cliente,idDifusion:null});
+    }else if(!admin){status=403;value={code:'42501',message:'No autorizado'};}
+    else{
+     const receivers=db.ComunidadUsuario.filter((m)=>m.idComunidad===actor.idComunidad&&m.aceptado&&m.idUsuario!==actor.idUsuario);
+     const diffusion={id:db.ConsultaDifusion.length+1,texto:body.p_texto,idComunidad:actor.idComunidad};db.ConsultaDifusion.push(diffusion);
+     for(const member of receivers)message(open(member),{idDifusion:diffusion.id,idCliente:null});value={id:diffusion.id,recipientCount:receivers.length};
+    }
+   }else if(!admin){status=403;value={code:'42501',message:'No autorizado'};}
    else if(table==='publicarNoticiaClub'){
     const row={id:2000+db.Noticia.length,idComunidad:actor.idComunidad,idAutor:actor.id,titulo:body.p_titulo,texto:body.p_texto,imagenPath:body.p_imagen_path,imagenUrl:null,eliminadoEn:null};db.Noticia.push(row);value={id:row.id};
    }else{
@@ -66,6 +90,10 @@ test('all club modules isolate the selected membership, including forged IDs and
   const reserve=(id)=>{const row=db.Reserva.find((r)=>r.id===id);return row&&{...row,Cancha:court(row.idCancha)};};
   if(table==='Reserva')rows=rows.map((row)=>({...row,Cancha:court(row.idCancha)}));
   if(table==='ComunidadUsuarioReserva')rows=rows.map((row)=>({...row,Reserva:reserve(row.idReserva)}));
+  if(table==='ConsultaConversacion')rows=rows.map((row)=>{
+   const member=db.ComunidadUsuario.find((m)=>m.id===row.idComunidadUsuario),user=db.Usuario.find((u)=>u.id===member?.idUsuario);
+   return{...row,socio:{nroSocio:123,aceptado:member?.aceptado,usuario:user}};
+  });
   const selected=rows.filter((row)=>match(row,url));let data=selected;
   if(req.method==='POST'){
    const row={id:1000+(db[table]?.length??0),...body};(db[table]??=[]).push(row);
@@ -77,7 +105,7 @@ test('all club modules isolate the selected membership, including forged IDs and
    const ids=selected.map((row)=>row.id);db[table]=(db[table]??[]).filter((row)=>!ids.includes(row.id));data=null;
   }
   if(req.headers.accept?.includes('vnd.pgrst.object')&&Array.isArray(data))data=data[0]??null;
-  res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(data));
+  res.writeHead(200,{'Content-Type':'application/json','Content-Range':`*/${selected.length}`});res.end(req.method==='HEAD'?'':JSON.stringify(data));
  });
  await new Promise((r)=>stub.listen(0,'127.0.0.1',r));t.after(()=>new Promise((r)=>stub.close(r)));
  const reservePort=createServer();await new Promise((r)=>reservePort.listen(0,'127.0.0.1',r));const port=reservePort.address().port;await new Promise((r)=>reservePort.close(r));
@@ -156,11 +184,30 @@ test('all club modules isolate the selected membership, including forged IDs and
   assert.equal((await request(`/noticias/${id}`,{method:'DELETE'})).status,200);assert.equal((await request(`/noticias/${id}`)).status,404);
   assert.equal((await request('/noticias',{method:'POST',body:{...body,photo:null}})).status,400);
  });
+ await t.test('consultations are private between the member and club admins; broadcasts stay in the sender club',async()=>{
+  const user={idUsuario:3,idComunidad:2,idComunidadUsuario:202},other={idUsuario:2,idComunidad:1,idComunidadUsuario:102};
+  const context=await json('/consultas/contexto');assert.equal(context.isAdmin,true);assert.equal(context.recipientCount,1);assert.equal(context.adminAvailable,true);
+  assert.equal((await json('/consultas/contexto',{actor:user})).recipientCount,0);
+  const own=await request('/consultas/propia',{actor:user,method:'POST',body:{idComunidadUsuario:102}});assert.equal(own.status,200);assert.equal((await own.json()).id,2002);
+  assert.equal((await request('/consultas/conversaciones',{actor:user})).status,403);
+  assert.equal((await request('/consultas/conversaciones/2003/mensajes',{actor:user})).status,404);
+  assert.equal((await request('/consultas/conversaciones/2002/mensajes',{actor:other})).status,404);
+  assert.equal((await request('/consultas/conversaciones/2001/mensajes')).status,404);
+  const history=await json('/consultas/conversaciones/2002/mensajes',{actor:user});assert.deepEqual(history.items.map((m)=>m.text),['Privado B']);
+  assert.equal(history.items[0].idRemitente,undefined);
+  const body={text:'Pregunta privada del usuario B',requestId:randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/,'$1-$2-$3-$4-$5'),idRemitente:101,idComunidad:1};
+  assert.equal((await request('/consultas/conversaciones/2002/mensajes',{actor:user,method:'POST',body})).status,201);assert.equal(db.ConsultaMensaje.at(-1).idRemitente,202);
+  assert.equal((await request('/consultas/difusiones',{actor:user,method:'POST',body})).status,403);
+  const inbox=await json('/consultas/conversaciones');assert.deepEqual(inbox.items.map((c)=>c.id),[2002,2003]);
+  const general=await request('/consultas/difusiones',{method:'POST',body:{...body,text:'Comunicado para el club B'}});assert.equal(general.status,201);assert.equal((await general.json()).recipientCount,1);
+  assert.equal(db.ConsultaMensaje.at(-1).idConversacion,2002);assert.equal(db.ConsultaMensaje.at(-1).idRemitente,201);
+  assert.equal(db.ConsultaMensaje.filter((m)=>m.idConversacion===2001).length,1);
+ });
  await t.test('forged/revoked selected memberships fail across all modules before any resource access',async()=>{
   for(const actor of [{...claims(2),idComunidad:1},claims(2)]){
    if(actor.idComunidad===2)db.ComunidadUsuario.find((r)=>r.id===201).aceptado=false;
    const before=records.length;
-   for(const path of ['/deportes','/reservas/mias','/partidos','/falta-jugador/partidos','/rides','/reservations','/noticias'])assert.equal((await request(path,{actor})).status,403,path);
+   for(const path of ['/deportes','/reservas/mias','/partidos','/falta-jugador/partidos','/rides','/reservations','/noticias','/consultas/contexto'])assert.equal((await request(path,{actor})).status,403,path);
    assert.ok(records.slice(before).every((r)=>r.table==='ComunidadUsuario'));
   }
  });

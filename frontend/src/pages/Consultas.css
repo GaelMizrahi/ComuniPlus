@@ -1,0 +1,14 @@
+.consulta-chat,.consulta-inbox,.consulta-broadcast{margin-top:20px;padding:16px;border-radius:18px;background:#fff;box-shadow:0 4px 18px #15243b0a;min-width:0}
+.consulta-thread{display:block;padding:14px 0;border-bottom:1px solid #e8edf4;min-width:0}
+.consulta-preview{font-size:13px;color:#657087;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-top:5px}
+.consulta-messages{display:flex;flex-direction:column;gap:12px;height:clamp(200px,48vh,440px);overflow-y:auto;padding:16px 2px;overscroll-behavior:contain;margin:12px 0}
+.consulta-bubble{align-self:flex-start;background:#eef1f6;padding:11px 13px;border-radius:14px 14px 14px 3px;max-width:92%;min-width:80px;color:#26344a}
+.consulta-bubble.mine{align-self:flex-end;background:#e5edff;border-radius:14px 14px 3px 14px}
+.consulta-bubble p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.55;margin:4px 0}
+.consulta-bubble time{display:block;text-align:right;font-size:10px;color:#657087}
+.consulta-broadcast-label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#775105;margin-bottom:5px}
+.consulta-composer{display:grid;gap:10px;min-width:0}
+.consulta-composer label{font-weight:600;font-size:13px}
+.consulta-composer textarea{display:block;width:100%;box-sizing:border-box;resize:vertical;border:1px solid #d9e1ed;border-radius:12px;padding:10px;font:inherit;font-size:14px;min-height:80px}
+.consulta-composer textarea:focus{outline:2px solid #3b6cf540;border-color:#3b6cf5}
+.consulta-composer textarea:disabled{opacity:.6}

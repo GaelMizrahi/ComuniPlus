@@ -7,7 +7,7 @@ const modules = [
   { key: 'deportes', title: 'Deportes', desc: 'Reservá canchas y encontrá jugadores', to: '/deportes', color: '#0ea472', icon: 'deportes' },
   { key: 'viajes', title: 'Transporte', desc: 'Coordiná traslados con tu club', to: '/viajes', color: '#3b6cf5', icon: 'viajes' },
   { key: 'mercado', title: 'Mercado', desc: 'Comprá y vendé en tu comunidad', to: '/mercado', color: '#e8930c', icon: 'mercado' },
-  { key: 'consultas', title: 'Consultas', desc: 'Preguntas y respuestas', to: null, color: '#8e99ab', icon: 'consultas' },
+  { key: 'consultas', title: 'Consultas', desc: 'Chat privado con la administración', to: '/consultas', color: '#687e9c', icon: 'consultas' },
   { key: 'noticias', title: 'Noticias', desc: 'Novedades y anuncios de tu club', to: '/noticias', color: '#7653ce', icon: 'noticias' },
 ];
 
